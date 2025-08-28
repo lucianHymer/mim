@@ -30,12 +30,17 @@ What dies in context lives eternal in the Wellspring.
     <b>Odin with Mímir's Head</b>
 </p>
 
-## Features
+## Description
 
-- **Knowledge Capture**: Uses the `remember` MCP tool to document discoveries
-- **Session Memory**: Maintains session-specific knowledge in `.knowledge/session.md`
-- **Manual Processing**: Run `./mim-coalesce` to organize remembered knowledge into documentation
-- **Claude Native**: A simple reference to the knowledge map from CLAUD.md loads the docs into claude's memory system
+There are two components:
+- **Knowledge Capture**:
+        An MCP tool called `remember` allows
+        Claude Code to automatically capture its learnings
+- **Documentation Processing**:
+        A command line tool processes the
+        captured knowledge into documentation
+
+The knowledge is loaded into Claude's memory (you can use /memory and /context to it's ensure working as expected).
 
 ## Installation
 
@@ -47,38 +52,27 @@ Run this command from the root of your git repository:
 curl -sSL https://raw.githubusercontent.com/lucianHymer/mim/main/install.sh | sh
 ```
 
-This will:
-- Create `.claude/` directory structure
-- Download and install the Mim MCP server
-- Configure CLAUDE.md with Mim knowledge references
-- Set up `.gitattributes` with merge strategies for session files
-- Configure `.mcp.json` to enable the Mim server
-- Create initial knowledge session file
-
-After installation:
-1. Review the changes: `git status`
-2. Commit: `git add . && git commit -m 'Add Mim knowledge system'`
-3. Start using Mim in your Claude sessions!
-
 ## Usage
 
 1. **During Claude sessions**: Claude will automatically use `remember` to capture discoveries
 2. **After commits**: Run `./mim-coalesce` manually to process the remembered knowledge
 
-## Components
+## Appendix
 
-### MCP Server (`claude/servers/mim.js`)
+### Components
+
+#### MCP Server (`claude/servers/mim.js`)
 Provides the `remember` tool for capturing project insights during Claude sessions.
 
-### Manual Script (`scripts/mim-coalesce`)
+#### Documentation Script (`scripts/mim-coalesce`)
 Processes raw remembered knowledge and updates organized documentation. Must be run manually after commits.
 
-### Configuration
+#### Configuration
 - `claude/append-to-CLAUDE.md` - Needed to enable memory usage
 - `claude/append-to-settings.local.json` - Settings to enable the mim MCP server
 - `claude/knowledge/append-to-gitattributes` - Git merge strategy to prevent conflicts in session.md files
 
-## Why Manual Execution?
+### Why Manual Execution?
 
 Mim was initially attempted as:
 1. **Agent (mim-coalesce)**: Failed due to Unicode/emoji encoding issues in JSON-RPC when using MultiEdit on CLAUDE.md sections with emojis
@@ -86,7 +80,7 @@ Mim was initially attempted as:
 
 Both approaches would crash Claude, making automated execution unreliable. The manual script approach allows mim to run in a stable environment.
 
-## Important Notes
+### Important Notes
 
 - Claude will remind you to run `./mim-coalesce` when appropriate
 - Mim may take several minutes for complex documentation updates
