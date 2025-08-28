@@ -57,6 +57,10 @@ curl -sSL "$BASE_URL/scripts/mim-coalesce" -o .claude/scripts/mim-coalesce
 chmod +x .claude/scripts/mim-coalesce
 log_info "Downloaded mim-coalesce script"
 
+# Create softlink in repository root
+ln -sf .claude/scripts/mim-coalesce mim-coalesce
+log_info "Created softlink to mim-coalesce in repository root"
+
 # Handle CLAUDE.md
 if [ -f "CLAUDE.md" ]; then
     log_info "CLAUDE.md exists, appending Mim configuration..."
