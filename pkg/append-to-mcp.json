@@ -1,9 +1,9 @@
 {
   "mcpServers": {
-    "chronicler": {
+    "mim": {
       "type": "stdio",
       "command": "node",
-      "args": [".claude/servers/chronicler.js"]
+      "args": [".claude/servers/mim.js"]
     }
   }
 }
