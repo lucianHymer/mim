@@ -39,7 +39,7 @@ fi
 log_info "Installing Mim knowledge system..."
 
 # Base URL for downloading files
-BASE_URL="https://raw.githubusercontent.com/YOUR_REPO/main/pkg"
+BASE_URL="https://raw.githubusercontent.com/lucianHymer/mim/main/pkg"
 
 # Create .claude directory structure
 log_info "Creating .claude directory structure..."
