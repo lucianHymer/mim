@@ -65,7 +65,7 @@ Both approaches would crash Claude, making automated execution unreliable. The m
 Run this command from the root of your git repository:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/YOUR_REPO/main/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/lucianHymer/mim/main/install.sh | sh
 ```
 
 This will:
