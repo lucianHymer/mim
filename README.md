@@ -60,15 +60,26 @@ Both approaches would crash Claude, making automated execution unreliable. The m
 
 ## Installation
 
-Run the install script:
+### Quick Install
+
+Run this command from the root of your git repository:
+
 ```bash
-./incantations/mim/install.sh
+curl -sSL https://raw.githubusercontent.com/YOUR_REPO/main/install.sh | sh
 ```
 
 This will:
-- Copy the `mim-coalesce` script to your project root
-- Set up the MCP server configuration
-- Add documentation sections to CLAUDE.md
+- Create `.claude/` directory structure
+- Download and install the Mim MCP server
+- Configure CLAUDE.md with Mim knowledge references
+- Set up `.gitattributes` with merge strategies for session files
+- Configure `.mcp.json` to enable the Mim server
+- Create initial knowledge session file
+
+After installation:
+1. Review the changes: `git status`
+2. Commit: `git add . && git commit -m 'Add Mim knowledge system'`
+3. Start using Mim in your Claude sessions!
 
 ## Usage
 
