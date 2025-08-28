@@ -5,11 +5,18 @@
 
 set -e
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+# Colors for output (only if terminal supports it)
+if [ -t 1 ] && command -v tput > /dev/null 2>&1; then
+    RED=$(tput setaf 1)
+    GREEN=$(tput setaf 2)
+    YELLOW=$(tput setaf 3)
+    NC=$(tput sgr0)
+else
+    RED=''
+    GREEN=''
+    YELLOW=''
+    NC=''
+fi
 
 # Helper functions
 log_info() {
@@ -58,10 +65,9 @@ curl -sSL "$BASE_URL/claude/servers/mim.js" -o .claude/servers/mim.js
 log_info "Downloaded mim.js server"
 
 # Download mim-coalesce script
+mkdir -p .claude/scripts
 curl -sSL "$BASE_URL/scripts/mim-coalesce" -o .claude/scripts/mim-coalesce
 chmod +x .claude/scripts/mim-coalesce
-mkdir -p .claude/scripts
-mv .claude/scripts/mim-coalesce .claude/scripts/
 log_info "Downloaded mim-coalesce script"
 
 # Handle CLAUDE.md
