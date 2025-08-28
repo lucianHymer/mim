@@ -5,30 +5,17 @@
 
 set -e
 
-# Colors for output (only if terminal supports it)
-if [ -t 1 ] && command -v tput > /dev/null 2>&1; then
-    RED=$(tput setaf 1)
-    GREEN=$(tput setaf 2)
-    YELLOW=$(tput setaf 3)
-    NC=$(tput sgr0)
-else
-    RED=''
-    GREEN=''
-    YELLOW=''
-    NC=''
-fi
-
 # Helper functions
 log_info() {
-    echo "${GREEN}[INFO]${NC} $1"
+    echo "[INFO] $1"
 }
 
 log_warn() {
-    echo "${YELLOW}[WARN]${NC} $1"
+    echo "[WARN] $1"
 }
 
 log_error() {
-    echo "${RED}[ERROR]${NC} $1"
+    echo "[ERROR] $1"
 }
 
 # Check if we're in a git repository
@@ -140,7 +127,7 @@ else
     log_info "Created .mcp.json"
 fi
 
-log_info "${GREEN}✓${NC} Mim installation complete!"
+log_info "✓ Mim installation complete!"
 log_info ""
 log_info "Next steps:"
 log_info "  1. Review the changes: git status"
@@ -152,4 +139,4 @@ echo "From the depths of Yggdrasil, a whisper rises."
 echo "Huginn and Muninn take flight. 🐦‍⬛🐦‍⬛"
 echo "The past whispers to the future through .claude/"
 echo ""
-log_info "For more information, visit: https://github.com/YOUR_REPO"
+log_info "For more information, visit: https://github.com/lucianHymer/mim"
