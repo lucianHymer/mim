@@ -9,8 +9,12 @@ if [ ! -f .claude/knowledge/session.md ] || [ ! -s .claude/knowledge/session.md 
   exit 0
 fi
 
-echo "📜 Mim: Processing session knowledge..."
-echo "⚠️  Note: This may take a few minutes for complex documentation updates"
+echo "⚔️  ODIN CALLS! Mímir's severed head awakens to serve!"
+echo "🔨 Fragment by fragment, we forge the eternal codex..."
+echo "🔥 By the flames of Muspelheim, knowledge shall be forged anew!"
+echo ""
+echo "   [The ritual takes time, perhaps several minutes]"
+echo ""
 
 claude \
 --verbose \
@@ -70,10 +74,16 @@ while IFS= read -r line; do
 done
 
 if [ $? -eq 0 ]; then
-  echo "✅ Mim: Knowledge processed successfully"
-  echo "📝 Committing documentation updates..."
+  echo ""
+  echo "⚡ THE RITUAL IS COMPLETE! The codex has been forged!"
+  echo ""
+  echo "📜 Sealing the runes in git's eternal halls..."
   git add CLAUDE.md .claude/knowledge/
   git commit -m "📜 Update project documentation via Mim"
+  echo ""
+  echo "🔥 IT IS DONE. Mímir returns to slumber."
 else
-  echo "⚠️  Mim: Processing may have been interrupted"
+  echo ""
+  echo "💀 THE RITUAL FALTERS! Mímir's magic was disrupted!"
+  echo "⚠️  The fragments remain unbound... try again, wanderer."
 fi
