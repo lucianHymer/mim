@@ -79,11 +79,15 @@ rl.on('line', (line) => {
 • You discovered how something actually works (vs what you assumed)
 • You found a project-specific convention, pattern, or requirement
 • You figured out why something wasn't working
-• You're about to explain something important about this codebase
 • You realize your initial assumption was wrong
 
-❌ BAD: Saying "for future reference, use yarn not npm" without using this tool
-✅ GOOD: Immediately remembering this knowledge when you realize it`,
+DON'T REMEMBER:
+• Issues you're actively fixing right now
+• Requirements for the current in-flight issue
+• Temporary debugging output
+• Generic programming knowledge (not project-specific)
+
+When in doubt, remember it - better to capture too much than miss important discoveries.`,
                     inputSchema: {
                         type: 'object',
                         properties: {
