@@ -47,9 +47,15 @@ log_info "Downloading Mim components..."
 curl -sSL "$BASE_URL/claude/knowledge/INSTRUCTIONS.md" -o .claude/knowledge/INSTRUCTIONS.md
 log_info "Downloaded INSTRUCTIONS.md"
 
-# Download mim.js server
-curl -sSL "$BASE_URL/claude/servers/mim.js" -o .claude/servers/mim.js
-log_info "Downloaded mim.js server"
+# Download mim.cjs server (using .cjs for consistent CommonJS handling)
+curl -sSL "$BASE_URL/claude/servers/mim.js" -o .claude/servers/mim.cjs
+log_info "Downloaded mim.cjs server"
+
+# Clean up old .js version if it exists
+if [ -f ".claude/servers/mim.js" ]; then
+    rm .claude/servers/mim.js
+    log_info "Removed old mim.js file"
+fi
 
 # Download mim-coalesce script
 mkdir -p .claude/scripts
@@ -111,13 +117,18 @@ if [ -f ".mcp.json" ]; then
         
         # Check if mim server already exists
         if jq -e '.mcpServers.mim' .mcp.json >/dev/null 2>&1; then
-            log_warn "Mim server already configured in .mcp.json, skipping..."
+            log_info "Mim server already configured, updating to use .cjs extension..."
+            # Update the command to use .cjs
+            jq '.mcpServers.mim.command = "node" | .mcpServers.mim.args[0] = ".claude/servers/mim.cjs"' .mcp.json > .mcp.json.tmp && mv .mcp.json.tmp .mcp.json
             rm "$TEMP_MCP"
+            log_info "Updated Mim server to use .cjs extension"
         else
             # Merge the configurations
             jq -s '.[0] * .[1]' .mcp.json "$TEMP_MCP" > .mcp.json.tmp && mv .mcp.json.tmp .mcp.json
+            # Update to use .cjs
+            jq '.mcpServers.mim.command = "node" | .mcpServers.mim.args[0] = ".claude/servers/mim.cjs"' .mcp.json > .mcp.json.tmp && mv .mcp.json.tmp .mcp.json
             rm "$TEMP_MCP"
-            log_info "Merged Mim server configuration into .mcp.json"
+            log_info "Merged Mim server configuration into .mcp.json (using .cjs)"
         fi
     else
         log_warn "jq not found. Please manually add the following to your .mcp.json:"
@@ -128,7 +139,11 @@ if [ -f ".mcp.json" ]; then
 else
     log_info "Creating .mcp.json with Mim server configuration..."
     curl -sSL "$BASE_URL/append-to-mcp.json" > .mcp.json
-    log_info "Created .mcp.json"
+    # Update to use .cjs
+    if command -v jq >/dev/null 2>&1; then
+        jq '.mcpServers.mim.command = "node" | .mcpServers.mim.args[0] = ".claude/servers/mim.cjs"' .mcp.json > .mcp.json.tmp && mv .mcp.json.tmp .mcp.json
+    fi
+    log_info "Created .mcp.json (using .cjs)"
 fi
 
 log_info "✓ Mim installation complete!"
