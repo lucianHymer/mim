@@ -57,15 +57,19 @@ if [ -f ".claude/servers/mim.js" ]; then
     log_info "Removed old mim.js file"
 fi
 
-# Download mim-coalesce script
+# Download mim scripts
 mkdir -p .claude/scripts
+curl -sSL "$BASE_URL/scripts/mim" -o .claude/scripts/mim
+chmod +x .claude/scripts/mim
+log_info "Downloaded mim script"
+
 curl -sSL "$BASE_URL/scripts/mim-coalesce" -o .claude/scripts/mim-coalesce
 chmod +x .claude/scripts/mim-coalesce
 log_info "Downloaded mim-coalesce script"
 
 # Create softlink in repository root
-ln -sf .claude/scripts/mim-coalesce mim-coalesce
-log_info "Created softlink to mim-coalesce in repository root"
+ln -sf .claude/scripts/mim mim
+log_info "Created softlink to mim in repository root"
 
 # Handle CLAUDE.md
 if [ -f "CLAUDE.md" ]; then
