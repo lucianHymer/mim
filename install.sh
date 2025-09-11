@@ -48,7 +48,7 @@ curl -sSL "$BASE_URL/claude/knowledge/INSTRUCTIONS.md" -o .claude/knowledge/INST
 log_info "Downloaded INSTRUCTIONS.md"
 
 # Download mim.cjs server (using .cjs for consistent CommonJS handling)
-curl -sSL "$BASE_URL/claude/servers/mim.js" -o .claude/servers/mim.cjs
+curl -sSL "$BASE_URL/claude/servers/mim.cjs" -o .claude/servers/mim.cjs
 log_info "Downloaded mim.cjs server"
 
 # Clean up old .js version if it exists
