@@ -32,16 +32,13 @@ What dies in context lives eternal in the Wellspring.
 
 ## Description
 
-There are three components:
+There are two components:
 - **Knowledge Capture**:
         An MCP tool called `remember` allows
         Claude Code to automatically capture its learnings
 - **Documentation Processing**:
-        The `mim coalesce` command processes the
+        A command line tool processes the
         captured knowledge into documentation
-- **Documentation Cleaning**:
-        The `mim distill` command automatically cleans up
-        duplicates, conflicts, and outdated information
 
 The knowledge is loaded into Claude's memory (you can use /memory and /context to it's ensure working as expected).
 
@@ -60,7 +57,7 @@ curl -sSL https://raw.githubusercontent.com/lucianHymer/mim/main/install.sh | sh
 1. **During Claude sessions**: Claude will automatically use `remember` to capture discoveries
 2. **After commits**: Run `./mim coalesce` to process the remembered knowledge
 3. **Clean documentation**: Run `./mim distill` to automatically clean duplicates and conflicts
-4. **Review and refine**: If distillation finds issues requiring review, edit `.distill/report.md` and run `./mim distill refine`
+4. **Review and refine**: If distillation finds issues requiring review, edit `distill-report.md` and run `./mim distill refine`
 
 ### Commands
 
