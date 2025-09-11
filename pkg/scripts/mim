@@ -1,7 +1,7 @@
 #!/bin/bash
 set -o pipefail
 
-# Mim - Norse memory keeper for Claude Code
+# Mím - Persistent Memory for Claude Code
 # Main entry point for all mim commands
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -33,9 +33,9 @@ show_help() {
 }
 
 ensure_distill_dir() {
-  if [ ! -d ".distill" ]; then
-    mkdir -p ".distill"
-    echo "📁 Created .distill directory for reports"
+  if [ ! -d ".claude/knowledge/distill" ]; then
+    mkdir -p ".claude/knowledge/distill"
+    echo "📁 Created .claude/knowledge/distill directory for reports"
   fi
 }
 
