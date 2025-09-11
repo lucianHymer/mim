@@ -32,13 +32,16 @@ What dies in context lives eternal in the Wellspring.
 
 ## Description
 
-There are two components:
+There are three components:
 - **Knowledge Capture**:
         An MCP tool called `remember` allows
         Claude Code to automatically capture its learnings
 - **Documentation Processing**:
-        A command line tool processes the
+        The `mim coalesce` command processes the
         captured knowledge into documentation
+- **Documentation Cleaning**:
+        The `mim distill` command automatically cleans up
+        duplicates, conflicts, and outdated information
 
 The knowledge is loaded into Claude's memory (you can use /memory and /context to it's ensure working as expected).
 
@@ -55,7 +58,16 @@ curl -sSL https://raw.githubusercontent.com/lucianHymer/mim/main/install.sh | sh
 ## Usage
 
 1. **During Claude sessions**: Claude will automatically use `remember` to capture discoveries
-2. **After commits**: Run `./mim-coalesce` manually to process the remembered knowledge
+2. **After commits**: Run `./mim coalesce` to process the remembered knowledge
+3. **Clean documentation**: Run `./mim distill` to automatically clean duplicates and conflicts
+4. **Review and refine**: If distillation finds issues requiring review, edit `.distill/report.md` and run `./mim distill refine`
+
+### Commands
+
+- `./mim coalesce` - Process session.md into organized documentation
+- `./mim distill` - Auto-clean docs and generate review report  
+- `./mim distill refine` - Apply user comments from distill report
+- `./mim help` - Show available commands
 
 ## Appendix
 
@@ -64,8 +76,14 @@ curl -sSL https://raw.githubusercontent.com/lucianHymer/mim/main/install.sh | sh
 #### MCP Server (`claude/servers/mim.js`)
 Provides the `remember` tool for capturing project insights during Claude sessions.
 
-#### Documentation Script (`scripts/mim-coalesce`)
-Processes raw remembered knowledge and updates organized documentation. Must be run manually after commits.
+#### Main Script (`mim`)
+The main entry point providing subcommands:
+- `mim coalesce` - Processes raw remembered knowledge and updates organized documentation  
+- `mim distill` - Automatically cleans duplicates and conflicts, generates review reports
+- `mim distill refine` - Applies user-guided refinements from distill reports
+
+#### Legacy Script (`pkg/scripts/mim-coalesce`)
+Direct script for processing remembered knowledge. Still available but `mim coalesce` is preferred.
 
 #### Configuration
 - `claude/append-to-CLAUDE.md` - Needed to enable memory usage
@@ -82,6 +100,8 @@ Both approaches would crash Claude, making automated execution unreliable. The m
 
 ### Important Notes
 
-- Claude will remind you to run `./mim-coalesce` when appropriate
-- Mim may take several minutes for complex documentation updates
-- All remembered knowledge is preserved in `.knowledge/session.md` until processed
+- Claude will remind you to run `./mim coalesce` when appropriate  
+- Both coalesce and distill may take several minutes for complex documentation
+- All remembered knowledge is preserved in `.claude/knowledge/session.md` until processed
+- Distill operations create backups in `.distill/backup_*` directories
+- Review reports are saved in `.distill/report.md` for human guidance
