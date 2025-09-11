@@ -13,6 +13,9 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Shared tools configuration for all mim commands
+ALLOWED_TOOLS="Read,Write,Edit,MultiEdit,Glob,Grep,LS,Bash,Git"
+
 show_help() {
   echo "⚡ Mím - Persistent Memory for Claude Code"
   echo ""
@@ -64,7 +67,7 @@ run_coalesce() {
 
   claude \
   --verbose \
-  --allowedTools Read,Write,MultiEdit,Glob,Grep,LS,Bash,Git \
+  --allowedTools "$ALLOWED_TOOLS" \
   --append-system-prompt "You are Mim, keeper of project knowledge. You coalesce raw remembered knowledge into permanent documentation. CRITICAL PATH STRUCTURE: The instructions file is at .claude/knowledge/INSTRUCTIONS.md (NOT .claude/KNOWLEDGE_INSTRUCTIONS.md). CLAUDE.md contains @ references to .claude/knowledge/INSTRUCTIONS.md and .claude/knowledge/KNOWLEDGE_MAP_CLAUDE.md. You maintain TWO knowledge maps: KNOWLEDGE_MAP.md (user-facing with markdown links) and KNOWLEDGE_MAP_CLAUDE.md (Claude-facing with @ references - these are RELATIVE to the knowledge directory). The project structure: .claude/knowledge/session.md (raw captures), .claude/knowledge/{category}/ (organized knowledge), .claude/knowledge/KNOWLEDGE_MAP.md (human-facing index), .claude/knowledge/KNOWLEDGE_MAP_CLAUDE.md (claude-facing index with RELATIVE @ refs like @patterns/file.md NOT @.claude/knowledge/patterns/file.md)" \
   --print --output-format stream-json "You are processing remembered knowledge. Execute this MANDATORY checklist:
 
@@ -133,7 +136,7 @@ run_distill() {
 
   claude \
     --verbose \
-    --allowedTools Read,Write,MultiEdit,Glob,Grep,Bash \
+    --allowedTools "$ALLOWED_TOOLS" \
     --append-system-prompt "You are Mim's distillation aspect, tasked with cleaning and organizing documentation. You process ALL *.md files in .claude/knowledge/ EXCEPT session.md (which is the raw capture file). Special files: KNOWLEDGE_MAP.md (human-readable index), KNOWLEDGE_MAP_CLAUDE.md (Claude-specific index with @ references). You scan for duplicates, outdated information, conflicts, junk/useless content, and inconsistencies across all knowledge files. Perform cross-file analysis to detect redundancies between different knowledge files. Your goal is to auto-fix clear issues and report items that need human review." \
     --print --output-format stream-json "Execute this MANDATORY distillation process:
 
@@ -243,7 +246,7 @@ run_distill_refine() {
 
   claude \
     --verbose \
-    --allowedTools Read,Write,MultiEdit,Glob,Grep \
+    --allowedTools "$ALLOWED_TOOLS" \
     --append-system-prompt "You are Mim's refinement aspect, applying human-guided decisions from the distill report. The report is at ./distill-report.md (repository root). You process items where users have provided guidance between <!-- USER INPUT START --> and <!-- USER INPUT END --> tags. Remember that knowledge files are in .claude/knowledge/ and include various topic files plus the special KNOWLEDGE_MAP.md and KNOWLEDGE_MAP_CLAUDE.md files." \
     --print --output-format stream-json "Execute this MANDATORY refinement process:
 
