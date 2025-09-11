@@ -48,7 +48,6 @@ stream_claude_output() {
   done
 }
 
-# Removed ensure_distill_dir - no longer needed without backup system
 
 run_coalesce() {
   if [ ! -f .claude/knowledge/session.md ] || [ ! -s .claude/knowledge/session.md ]; then
@@ -169,7 +168,7 @@ run_distill() {
    - **Options**: Suggested resolutions
    
    <!-- USER INPUT START -->
-   <!-- Add your decision/instructions here -->
+   [Your decisions here]
    <!-- USER INPUT END -->
 
 4. **COMPLETION**:
