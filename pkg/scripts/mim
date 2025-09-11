@@ -15,7 +15,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 show_help() {
-  echo "🪓 Mim - Norse memory keeper for Claude Code"
+  echo "⚡ Mím - Persistent Memory for Claude Code"
   echo ""
   echo "USAGE:"
   echo "  mim <command> [options]"
@@ -60,7 +60,7 @@ run_distill() {
 
   # Create backup before making changes
   if [ -d ".claude/knowledge" ]; then
-    BACKUP_DIR=".distill/backup_$(date +%Y%m%d_%H%M%S)"
+    BACKUP_DIR=".claude/knowledge/distill/backup_$(date +%Y%m%d_%H%M%S)"
     echo "💾 Creating backup at $BACKUP_DIR"
     cp -r .claude/knowledge "$BACKUP_DIR"
   fi
@@ -84,7 +84,7 @@ run_distill() {
    - Track all changes made for the report
 
 3. **GENERATE DISTILL REPORT**:
-   Create .distill/report.md with these sections:
+   Create distill-report.md with these sections:
 
    ## Automated Changes
    [List all auto-fixes made with before/after diffs]
@@ -120,14 +120,14 @@ IMPORTANT: Only auto-fix issues that are objectively clear (exact duplicates, br
   if [ $? -eq 0 ]; then
     echo ""
     echo "✨ Distillation complete!"
-    if [ -f ".distill/report.md" ]; then
+    if [ -f "distill-report.md" ]; then
       echo ""
-      echo "📋 Distill report generated at .distill/report.md"
+      echo "📋 Distill report generated at distill-report.md"
       
       # Check if there are review items
-      if grep -q "## Requires Review" ".distill/report.md" && [ "$(grep -A 10 "## Requires Review" ".distill/report.md" | wc -l)" -gt 2 ]; then
+      if grep -q "## Requires Review" "distill-report.md" && [ "$(grep -A 10 "## Requires Review" "distill-report.md" | wc -l)" -gt 2 ]; then
         echo -e "${YELLOW}⚠️  Some issues require human review${NC}"
-        echo "📝 Edit .distill/report.md to add your decisions, then run:"
+        echo "📝 Edit distill-report.md to add your decisions, then run:"
         echo -e "${BLUE}   mim distill refine${NC}"
       else
         echo -e "${GREEN}✅ No manual review required - all issues were auto-fixed${NC}"
@@ -151,16 +151,16 @@ IMPORTANT: Only auto-fix issues that are objectively clear (exact duplicates, br
 run_distill_refine() {
   echo "🎯 Running mim distill refine..."
   
-  if [ ! -f ".distill/report.md" ]; then
-    echo -e "${RED}❌ Error: No distill report found at .distill/report.md${NC}"
+  if [ ! -f "distill-report.md" ]; then
+    echo -e "${RED}❌ Error: No distill report found at distill-report.md${NC}"
     echo "Run 'mim distill' first to generate a report."
     exit 1
   fi
 
   # Check if report has user comments
-  if ! grep -q "<!-- USER:" ".distill/report.md"; then
-    echo -e "${YELLOW}⚠️  No user comments found in .distill/report.md${NC}"
-    echo "Please edit .distill/report.md and add your decisions in the <!-- USER: --> comments."
+  if ! grep -q "<!-- USER:" "distill-report.md"; then
+    echo -e "${YELLOW}⚠️  No user comments found in distill-report.md${NC}"
+    echo "Please edit distill-report.md and add your decisions in the <!-- USER: --> comments."
     exit 1
   fi
 
@@ -176,7 +176,7 @@ run_distill_refine() {
     --print --output-format stream-json "Execute this MANDATORY refinement process:
 
 1. **READ DISTILL REPORT**:
-   - Read .distill/report.md completely
+   - Read distill-report.md completely
    - Identify all items in 'Requires Review' section that have <!-- USER: --> comments with decisions
 
 2. **APPLY USER DECISIONS**:

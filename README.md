@@ -82,9 +82,6 @@ The main entry point providing subcommands:
 - `mim distill` - Automatically cleans duplicates and conflicts, generates review reports
 - `mim distill refine` - Applies user-guided refinements from distill reports
 
-#### Legacy Script (`pkg/scripts/mim-coalesce`)
-Direct script for processing remembered knowledge. Still available but `mim coalesce` is preferred.
-
 #### Configuration
 - `claude/append-to-CLAUDE.md` - Needed to enable memory usage
 - `claude/append-to-settings.local.json` - Settings to enable the mim MCP server
@@ -103,5 +100,5 @@ Both approaches would crash Claude, making automated execution unreliable. The m
 - Claude will remind you to run `./mim coalesce` when appropriate  
 - Both coalesce and distill may take several minutes for complex documentation
 - All remembered knowledge is preserved in `.claude/knowledge/session.md` until processed
-- Distill operations create backups in `.distill/backup_*` directories
-- Review reports are saved in `.distill/report.md` for human guidance
+- Distill operations create backups in `.claude/knowledge/distill/backup_*` directories
+- Review reports are saved in `distill-report.md` in the repository root for immediate processing
