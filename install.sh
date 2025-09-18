@@ -63,6 +63,15 @@ curl -sSL "$BASE_URL/scripts/mim" -o .claude/scripts/mim
 chmod +x .claude/scripts/mim
 log_info "Downloaded mim script"
 
+# Download mim-prompts.js
+curl -sSL "$BASE_URL/scripts/mim-prompts.js" -o .claude/scripts/mim-prompts.js
+log_info "Downloaded mim-prompts.js"
+
+# Create agents directory and download inquisitor agent
+mkdir -p .claude/agents
+curl -sSL "$BASE_URL/claude/agents/inquisitor.md" -o .claude/agents/inquisitor.md
+log_info "Downloaded inquisitor agent"
+
 # Create softlink in repository root
 ln -sf .claude/scripts/mim mim
 log_info "Created softlink to mim in repository root"
