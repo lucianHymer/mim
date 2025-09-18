@@ -117,8 +117,13 @@ Based on the research from all inquisitor agents:
    [Your decisions here]
    <!-- USER INPUT END -->
 
-4. Save to ./distill-report.md (repository root)
-5. DO NOT commit changes
+4. **CRITICAL VERIFICATION**: Double-check that EVERY review item has both:
+   - <!-- USER INPUT START --> delimiter before the input area
+   - <!-- USER INPUT END --> delimiter after the input area
+   - These delimiters MUST be present for EACH individual review item
+
+5. Save to ./distill-report.md (repository root)
+6. DO NOT commit changes
 EOF
 
 # Distill generate prompt 3
@@ -140,7 +145,13 @@ Review your synthesis and distill-report.md:
    - Double-check categorization (auto-fix vs review)
    - Confirm all inquisitor findings were addressed
 
-3. **REFINEMENT**:
+3. **USER INPUT DELIMITER VERIFICATION**:
+   - CRITICAL: Verify EACH review item has <!-- USER INPUT START --> and <!-- USER INPUT END --> delimiters
+   - Each review item MUST have its own pair of delimiters
+   - No review item should be missing these delimiters
+   - Fix any missing delimiters immediately
+
+4. **REFINEMENT**:
    - Adjust recommendations if needed
    - Add any missed issues
    - Improve clarity of review items
@@ -220,7 +231,10 @@ coalesce() {
   # Use the embedded coalesce prompt
   local prompt="$PROMPT_COALESCE"
 
-  claude code -a --allowed-tools "$ALLOWED_TOOLS" "$prompt"
+  claude \
+    --verbose \
+    --allowedTools "$ALLOWED_TOOLS" \
+    --print --output-format stream-json "$prompt" | stream_claude_output
 
   if [ $? -eq 0 ]; then
     echo ""
@@ -443,7 +457,10 @@ distill_refine() {
   # Use the embedded distill_refine prompt
   local prompt="$PROMPT_DISTILL_REFINE"
 
-  claude code -a --allowed-tools "$ALLOWED_TOOLS" "$prompt"
+  claude \
+    --verbose \
+    --allowedTools "$ALLOWED_TOOLS" \
+    --print --output-format stream-json "$prompt" | stream_claude_output
 
   if [ $? -eq 0 ]; then
     echo ""
