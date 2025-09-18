@@ -26,19 +26,18 @@ show_help() {
   echo "  coalesce     Process remembered knowledge into documentation"
   echo "  distill      Automatically clean up duplicates and conflicts in documentation"
   echo "               (interactive by default - opens editor for review items)"
-  echo "  distill refine  Apply user-guided refinements from distill report"
   echo ""
   echo "OPTIONS FOR DISTILL:"
   echo "  --no-interactive, -n  Skip editor, preserve current two-step behavior"
   echo "  --editor <cmd>        Override \$EDITOR for this run"
-  echo "  --refine-only         Jump straight to refine step (alias for 'distill refine')"
+  echo "  --refine-only         Jump straight to refine step"
   echo ""
   echo "EXAMPLES:"
   echo "  mim coalesce              # Process session.md into organized docs"
   echo "  mim distill               # Auto-clean and interactively review (default)"
   echo "  mim distill -n            # Auto-clean only, no interactive editor"
   echo "  mim distill --editor vim  # Use vim for this distill session"
-  echo "  mim distill refine        # Apply user comments from distill report"
+  echo "  mim distill --refine-only # Jump straight to refine step"
   echo ""
 }
 
@@ -408,8 +407,9 @@ case "$1" in
     ;;
   "distill")
     if [ "$2" = "refine" ]; then
+      # Hidden alias for backward compatibility - routes to --refine-only
       shift 2
-      run_distill_refine "$@"
+      run_distill --refine-only "$@"
     else
       shift
       run_distill "$@"
