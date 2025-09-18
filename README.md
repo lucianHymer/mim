@@ -56,14 +56,17 @@ curl -sSL https://raw.githubusercontent.com/lucianHymer/mim/main/install.sh | sh
 
 1. **During Claude sessions**: Claude will automatically use `remember` to capture discoveries
 2. **After commits**: Run `./mim coalesce` to process the remembered knowledge
-3. **Clean documentation**: Run `./mim distill` to automatically clean duplicates and conflicts
-4. **Review and refine**: If distillation finds issues requiring review, edit `distill-report.md` and run `./mim distill refine`
+3. **Clean documentation**: Run `./mim distill` to interactively clean duplicates and conflicts
+   - Opens editor automatically if issues need review
+   - Use `--no-interactive` flag for the old two-step behavior
 
 ### Commands
 
 - `./mim coalesce` - Process session.md into organized documentation
-- `./mim distill` - Auto-clean docs and generate review report  
-- `./mim distill refine` - Apply user comments from distill report
+- `./mim distill` - Interactive cleanup (auto-opens editor for review items)
+  - `--no-interactive` or `-n` - Skip editor, manual two-step process
+  - `--editor <cmd>` - Override $EDITOR for this session
+  - `--refine-only` - Jump straight to applying existing distill report
 - `./mim help` - Show available commands
 
 ## Appendix
@@ -76,8 +79,9 @@ Provides the `remember` tool for capturing project insights during Claude sessio
 #### Main Script (`mim`)
 The main entry point providing subcommands:
 - `mim coalesce` - Processes raw remembered knowledge and updates organized documentation  
-- `mim distill` - Automatically cleans duplicates and conflicts, generates review reports
-- `mim distill refine` - Applies user-guided refinements from distill reports
+- `mim distill` - Interactively cleans duplicates and conflicts (opens editor for review)
+  - Interactive by default: opens editor when review needed, auto-commits when done
+  - Non-interactive mode (`--no-interactive`): preserves old two-step behavior
 
 #### Configuration
 - `claude/append-to-CLAUDE.md` - Needed to enable memory usage
