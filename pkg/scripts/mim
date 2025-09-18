@@ -206,6 +206,45 @@ stream_claude_output() {
   done
 }
 
+# Function to run claude with consistent options
+run_claude() {
+  local prompt="$1"
+  local tools="${2:-$ALLOWED_TOOLS}"
+  local resume_flag="${3:-}"
+  local system_prompt="${4:-}"
+  local capture_output="${5:-false}"
+
+  local cmd="claude"
+
+  # Add resume flag if provided
+  if [ -n "$resume_flag" ]; then
+    cmd="$cmd $resume_flag"
+  fi
+
+  # Add verbose and tools
+  cmd="$cmd --verbose --allowedTools \"$tools\""
+
+  # Add system prompt if provided
+  if [ -n "$system_prompt" ]; then
+    cmd="$cmd --append-system-prompt \"$system_prompt\""
+  fi
+
+  # Add print and output format
+  cmd="$cmd --print --output-format stream-json \"$prompt\""
+
+  # Execute with or without output capture
+  if [ "$capture_output" = "true" ]; then
+    local temp_output=$(mktemp)
+    eval "$cmd" 2>&1 | tee "$temp_output" | stream_claude_output
+    local exit_code=${PIPESTATUS[0]}
+    echo "$temp_output"  # Return temp file path for caller to use
+    return $exit_code
+  else
+    eval "$cmd" | stream_claude_output
+    return $?
+  fi
+}
+
 # Function to ensure inquisitor agent exists
 ensure_inquisitor_agent() {
   local agent_dir=".claude/agents"
@@ -230,11 +269,9 @@ coalesce() {
 
   # Use the embedded coalesce prompt
   local prompt="$PROMPT_COALESCE"
+  local system_prompt="You are Mím's knowledge processor. Your role is to organize raw captured knowledge into structured documentation. You must process every entry, categorize it appropriately, update knowledge maps, and ensure no knowledge is lost."
 
-  claude \
-    --verbose \
-    --allowedTools "$ALLOWED_TOOLS" \
-    --print --output-format stream-json "$prompt" | stream_claude_output
+  run_claude "$prompt" "$ALLOWED_TOOLS" "" "$system_prompt"
 
   if [ $? -eq 0 ]; then
     echo ""
@@ -360,13 +397,9 @@ distill_generate() {
   local prompt="$PROMPT_DISTILL_GEN_1"
 
   # Run first prompt and capture session ID
-  local temp_output=$(mktemp)
-  claude \
-    --verbose \
-    --allowedTools "$ALLOWED_TOOLS,Task" \
-    --append-system-prompt "You are Mim's distillation orchestrator. You coordinate multiple inquisitor agents to verify and clean the knowledge base. The inquisitor agents are specialized for researching individual knowledge entries." \
-    --print --output-format stream-json "$prompt" 2>&1 | tee "$temp_output" | stream_claude_output
-  exit_code=${PIPESTATUS[0]}
+  local system_prompt="You are Mím's distillation orchestrator, Phase 1: Knowledge Verification. You coordinate multiple inquisitor agents to research and verify each knowledge entry against the current codebase. Launch agents systematically to ensure comprehensive coverage."
+  local temp_output=$(run_claude "$prompt" "$ALLOWED_TOOLS,Task" "" "$system_prompt" "true")
+  exit_code=$?
 
   # Extract session ID from the output
   session_id=$(grep -o 'Session ID: [a-zA-Z0-9_-]*' "$temp_output" | tail -1 | cut -d' ' -f3)
@@ -388,11 +421,8 @@ distill_generate() {
     resume_flag="--resume $session_id"
   fi
 
-  claude \
-    $resume_flag \
-    --verbose \
-    --allowedTools "$ALLOWED_TOOLS" \
-    --print --output-format stream-json "$prompt" | stream_claude_output
+  local system_prompt_phase2="You are Mím's distillation synthesizer, Phase 2: Finding Analysis. You process all inquisitor research to identify duplicates, conflicts, and outdated information. You must create a clear distill-report.md with proper USER INPUT delimiters for each review item."
+  run_claude "$prompt" "$ALLOWED_TOOLS" "$resume_flag" "$system_prompt_phase2"
   exit_code=$?
 
   if [ $exit_code -ne 0 ]; then
@@ -405,11 +435,8 @@ distill_generate() {
   echo "🔄 Phase 3: Edge case review..."
   prompt="$PROMPT_DISTILL_GEN_3"
 
-  claude \
-    $resume_flag \
-    --verbose \
-    --allowedTools "$ALLOWED_TOOLS" \
-    --print --output-format stream-json "$prompt" | stream_claude_output
+  local system_prompt_phase3="You are Mím's distillation validator, Phase 3: Quality Assurance. You perform edge case analysis and validation of the distill report. Ensure all USER INPUT delimiters are present, no valuable knowledge is lost, and all recommendations are accurate."
+  run_claude "$prompt" "$ALLOWED_TOOLS" "$resume_flag" "$system_prompt_phase3"
   exit_code=$?
 
   if [ $exit_code -ne 0 ]; then
@@ -456,11 +483,9 @@ distill_refine() {
 
   # Use the embedded distill_refine prompt
   local prompt="$PROMPT_DISTILL_REFINE"
+  local system_prompt="You are Mím's refinement executor. Your role is to apply user decisions from the distill report to the knowledge base. Parse user input sections carefully, apply changes precisely, and clean up the report when complete."
 
-  claude \
-    --verbose \
-    --allowedTools "$ALLOWED_TOOLS" \
-    --print --output-format stream-json "$prompt" | stream_claude_output
+  run_claude "$prompt" "$ALLOWED_TOOLS" "" "$system_prompt"
 
   if [ $? -eq 0 ]; then
     echo ""
