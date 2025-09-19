@@ -1,0 +1,17 @@
+# Node modules
+node_modules/
+
+# Compiled TypeScript output
+pkg/dist/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
