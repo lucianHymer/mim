@@ -11,15 +11,30 @@ const ALLOWED_TOOLS = 'Read,Write,Edit,MultiEdit,Glob,Grep,LS,Bash,Git';
  * Stream and process claude output from JSON-RPC format
  */
 function streamClaudeOutput(line: string): void {
-  // Extract content from stream-json format
-  if (line.includes('"type":"text"')) {
-    // Extract text content between "text":" and next "
-    const match = line.match(/"text":"([^"]*)"/);
-    if (match && match[1]) {
-      console.log(match[1]);
+  try {
+    const data = JSON.parse(line);
+
+    // Extract and print text messages (following the example pattern)
+    if (data.message?.content?.[0]?.type === 'text') {
+      const text = data.message.content[0].text;
+      if (text) {
+        console.log(text);
+      }
     }
-  } else {
-    console.log(line);
+
+    // Extract and print tool usage (following the example pattern)
+    else if (data.message?.content?.[0]?.type === 'tool_use') {
+      const toolName = data.message.content[0].name;
+      if (toolName) {
+        console.log(`[Using tool: ${toolName}]`);
+      }
+    }
+  } catch {
+    // If it's not valid JSON or doesn't match our expected structure,
+    // just output the raw line (for backward compatibility)
+    if (line.trim()) {
+      console.log(line);
+    }
   }
 }
 
