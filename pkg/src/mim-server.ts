@@ -1,37 +1,42 @@
 #!/usr/bin/env node
-const readline = require('readline');
-const fs = require('fs');
-const path = require('path');
+import * as readline from 'readline';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // Helper to send JSON-RPC responses
-function respond(id, result) {
+function respond(id: number | string, result: any): void {
     const response = { jsonrpc: '2.0', id, result };
     console.log(JSON.stringify(response));
 }
 
-function respondError(id, code, message) {
+function respondError(id: number | string, code: number, message: string): void {
     const response = { jsonrpc: '2.0', id, error: { code, message } };
     console.log(JSON.stringify(response));
 }
 
 // The actual remembering function
-function remember(args) {
+function remember(args: {
+    category: string;
+    topic: string;
+    details: string;
+    files?: string;
+}): string {
     const { category, topic, details, files } = args;
-    
+
     // Ensure knowledge directory exists
     const knowledgeDir = path.join(process.cwd(), '.claude', 'knowledge');
     if (!fs.existsSync(knowledgeDir)) {
         fs.mkdirSync(knowledgeDir, { recursive: true });
     }
-    
+
     const sessionFile = path.join(knowledgeDir, 'session.md');
-    
+
     // Create session file header if it doesn't exist
     if (!fs.existsSync(sessionFile)) {
         const date = new Date().toISOString().split('T')[0];
         fs.writeFileSync(sessionFile, `# Knowledge Capture Session - ${date}\n\n`);
     }
-    
+
     // Format the entry
     const time = new Date().toTimeString().slice(0, 5);
     let entry = `### [${time}] [${category}] ${topic}\n`;
@@ -40,10 +45,10 @@ function remember(args) {
         entry += `**Files**: ${files}\n`;
     }
     entry += `---\n\n`;
-    
+
     // Atomic append
     fs.appendFileSync(sessionFile, entry);
-    
+
     return `✓ Remembered in .claude/knowledge/session.md: [${category}] ${topic}`;
 }
 
@@ -55,10 +60,10 @@ const rl = readline.createInterface({
 });
 
 // Handle incoming JSON-RPC requests
-rl.on('line', (line) => {
+rl.on('line', (line: string) => {
     try {
         const request = JSON.parse(line);
-        
+
         if (request.method === 'initialize') {
             respond(request.id, {
                 protocolVersion: '2024-11-05',
@@ -99,16 +104,16 @@ rl.on('line', (line) => {
                             },
                             topic: {
                                 type: 'string',
-                                description: 'Brief, descriptive title for what you learned (e.g., "Redis caching strategy", "JWT authentication flow", "MongoDB connection pooling")'
+                                description: 'Short, descriptive title of what you learned (5-10 words)'
                             },
                             details: {
                                 type: 'string',
-                                description: 'Complete details of what you discovered. Include specifics, configuration values, important notes, and any context that would help understand this knowledge later.'
+                                description: 'Full explanation of the discovery, including context, implications, and examples'
                             },
                             files: {
                                 type: 'string',
-                                description: 'Comma-separated list of related file paths where this knowledge was discovered (optional but recommended)',
-                                examples: ['app.js', 'src/auth/jwt.js, src/middleware/auth.js', 'config/database.yml']
+                                description: 'Optional: Comma-separated list of relevant file paths',
+                                required: false
                             }
                         },
                         required: ['category', 'topic', 'details']
@@ -116,36 +121,22 @@ rl.on('line', (line) => {
                 }]
             });
         } else if (request.method === 'tools/call') {
-            if (request.params.name === 'remember') {
-                try {
-                    const result = remember(request.params.arguments);
-                    respond(request.id, {
-                        content: [{ type: 'text', text: result }]
-                    });
-                } catch (error) {
-                    respondError(request.id, -32603, `Remembering failed: ${error.message}`);
-                }
+            if (request.params?.name === 'remember') {
+                const result = remember(request.params.arguments);
+                respond(request.id, {
+                    content: [{
+                        type: 'text',
+                        text: result
+                    }]
+                });
             } else {
-                respondError(request.id, -32601, `Unknown tool: ${request.params.name}`);
+                respondError(request.id, -32601, `Unknown tool: ${request.params?.name}`);
             }
-        } else if (request.method === 'shutdown') {
-            respond(request.id, {});
-            process.exit(0);
-        } else if (request.method === 'notifications/initialized') {
-            // This is a notification, not a request - don't respond
-            return;
         } else {
-            // Only send error for requests with IDs (not notifications)
-            if (request.id !== undefined) {
-                respondError(request.id, -32601, `Method not found: ${request.method}`);
-            }
+            respondError(request.id, -32601, `Unknown method: ${request.method}`);
         }
     } catch (error) {
-        // Invalid JSON or other parsing errors
+        // Invalid JSON or other errors
         console.error('Error processing request:', error);
     }
 });
-
-// Handle clean shutdown
-process.on('SIGTERM', () => process.exit(0));
-process.on('SIGINT', () => process.exit(0));

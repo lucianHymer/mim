@@ -14,5 +14,5 @@
     "removeComments": true,
     "allowJs": false
   },
-  "files": ["src/mim.ts"]
+  "files": ["src/mim.ts", "src/mim-server.ts"]
 }
