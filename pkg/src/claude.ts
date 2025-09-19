@@ -9,10 +9,16 @@ const ALLOWED_TOOLS = 'Read,Write,Edit,MultiEdit,Glob,Grep,LS,Bash,Git';
 
 /**
  * Stream and process claude output from JSON-RPC format
+ * Returns session ID if found in the system init message
  */
-function streamClaudeOutput(line: string): void {
+function streamClaudeOutput(line: string): string | null {
   try {
     const data = JSON.parse(line);
+
+    // Check for session ID in system init message
+    if (data.type === 'system' && data.subtype === 'init' && data.session_id) {
+      return data.session_id;
+    }
 
     // Extract and print text messages (following the example pattern)
     if (data.message?.content?.[0]?.type === 'text') {
@@ -36,18 +42,10 @@ function streamClaudeOutput(line: string): void {
       console.log(line);
     }
   }
-}
 
-/**
- * Extract session ID from claude output
- */
-function extractSessionId(output: string): string | null {
-  const match = output.match(/Session ID: ([a-zA-Z0-9_-]+)/);
-  if (match && match[1]) {
-    return match[1];
-  }
   return null;
 }
+
 
 /**
  * Run claude CLI with given options
@@ -117,7 +115,10 @@ export async function runClaude(options: ClaudeOptions): Promise<{
           writeStream.write(line + '\n');
         }
       }
-      streamClaudeOutput(line);
+      const extractedSessionId = streamClaudeOutput(line);
+      if (extractedSessionId && !sessionId) {
+        sessionId = extractedSessionId;
+      }
     });
 
     // Process stderr
@@ -137,13 +138,7 @@ export async function runClaude(options: ClaudeOptions): Promise<{
         writeStream.end();
       }
 
-      // Extract session ID if we captured output
-      if (captureOutput && fullOutput) {
-        const extractedId = extractSessionId(fullOutput);
-        if (extractedId) {
-          sessionId = extractedId;
-        }
-      }
+      // Session ID is now captured during streaming in the rl.on('line') handler
 
       resolve({
         success: code === 0,
