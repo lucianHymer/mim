@@ -3,9 +3,9 @@ set -e
 
 echo "Building mim TypeScript to CommonJS..."
 
-# Use npx to run TypeScript compiler without installing
+# Use TypeScript from dev dependencies
 cd "$(dirname "$0")"
-npx -y typescript@5
+npx typescript
 
 # Concatenate all JS files into a single mim.cjs
 echo "#!/usr/bin/env node" > scripts/mim.cjs

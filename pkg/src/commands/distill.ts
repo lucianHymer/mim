@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, unlinkSync } from 'fs';
-import { runClaude, ensureInquisitorAgent } from '../claude';
+import { runClaude, runSession, ensureInquisitorAgent } from '../claude';
 import { DISTILL_COMMAND, SYSTEM_PROMPTS } from '../prompts';
 import { DistillOptions, Colors } from '../types';
 import { spawn } from 'child_process';
@@ -18,63 +18,33 @@ async function distillGenerate(): Promise<boolean> {
 
   // Get the generate session (first session with 3 prompts)
   const generateSession = DISTILL_COMMAND.sessions[0];
-  let sessionId: string | undefined;
 
-  // Phase 1: Launch inquisitor agents
-  console.log('🔍 Phase 1: Launching inquisitor agents...');
-  const phase1Result = await runClaude({
-    prompt: generateSession.prompts[0],
+  console.log('🔍 Starting distill generation...');
+  console.log('Phase 1: Launching inquisitor agents...');
+  console.log('Phase 2: Processing findings...');
+  console.log('Phase 3: Edge case review...');
+
+  // Run the entire session using the reusable function
+  const result = await runSession(generateSession, {
+    // First prompt uses Task tool for agents, others use regular tools
+    // TODO: Consider allowing per-prompt tools configuration in runSession
     tools: ALLOWED_TOOLS_WITH_TASK,
-    systemPrompt: SYSTEM_PROMPTS.distillPhase1,
-    captureOutput: true
+    systemPrompts: [
+      SYSTEM_PROMPTS.distillPhase1,
+      SYSTEM_PROMPTS.distillPhase2,
+      SYSTEM_PROMPTS.distillPhase3
+    ],
+    captureFirstOutput: true
   });
 
-  if (!phase1Result.success) {
-    console.error(`${Colors.RED}❌ Phase 1 failed${Colors.NC}`);
+  if (!result.success) {
+    console.error(`${Colors.RED}❌ Distill generation failed${Colors.NC}`);
     return false;
   }
 
-  // Extract session ID for resuming
-  if (phase1Result.sessionId) {
-    sessionId = phase1Result.sessionId;
-  }
-
-  // Clean up temp file
-  if (phase1Result.tempFile) {
-    try {
-      unlinkSync(phase1Result.tempFile);
-    } catch (e) {
-      // Ignore cleanup errors
-    }
-  }
-
-  // Phase 2: Process findings
-  console.log('');
-  console.log('🔄 Phase 2: Processing findings...');
-  const phase2Result = await runClaude({
-    prompt: generateSession.prompts[1],
-    tools: ALLOWED_TOOLS,
-    resumeSessionId: sessionId,
-    systemPrompt: SYSTEM_PROMPTS.distillPhase2
-  });
-
-  if (!phase2Result.success) {
-    console.error(`${Colors.RED}❌ Phase 2 failed${Colors.NC}`);
-    return false;
-  }
-
-  // Phase 3: Edge case review
-  console.log('');
-  console.log('🔄 Phase 3: Edge case review...');
-  const phase3Result = await runClaude({
-    prompt: generateSession.prompts[2],
-    tools: ALLOWED_TOOLS,
-    resumeSessionId: sessionId,
-    systemPrompt: SYSTEM_PROMPTS.distillPhase3
-  });
-
-  if (!phase3Result.success) {
-    console.error(`${Colors.RED}❌ Phase 3 failed${Colors.NC}`);
+  // Error if we didn't get a session ID
+  if (!result.sessionId) {
+    console.error(`${Colors.RED}❌ Failed to extract session ID${Colors.NC}`);
     return false;
   }
 

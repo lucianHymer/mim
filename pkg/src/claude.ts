@@ -2,7 +2,7 @@ import { spawn } from 'child_process';
 import { createWriteStream, mkdtempSync, unlinkSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { ClaudeOptions, Colors } from './types';
+import { ClaudeOptions, Colors, Session } from './types';
 import { createInterface } from 'readline';
 
 const ALLOWED_TOOLS = 'Read,Write,Edit,MultiEdit,Glob,Grep,LS,Bash,Git';
@@ -142,6 +142,67 @@ export async function runClaude(options: ClaudeOptions): Promise<{
       resolve({ success: false });
     });
   });
+}
+
+/**
+ * Run a complete session with multiple prompts
+ */
+export async function runSession(
+  session: Session,
+  options: {
+    tools?: string;
+    systemPrompts?: string[];
+    captureFirstOutput?: boolean;
+  } = {}
+): Promise<{
+  success: boolean;
+  sessionId?: string;
+}> {
+  const {
+    tools = ALLOWED_TOOLS,
+    systemPrompts = [],
+    captureFirstOutput = true
+  } = options;
+
+  let sessionId: string | undefined;
+
+  // Run each prompt in the session
+  for (let i = 0; i < session.prompts.length; i++) {
+    const prompt = session.prompts[i];
+    const systemPrompt = systemPrompts[i];
+
+    console.log(`\n📋 Running prompt ${i + 1}/${session.prompts.length}...`);
+
+    const result = await runClaude({
+      prompt,
+      tools,
+      systemPrompt,
+      resumeSessionId: i > 0 ? sessionId : undefined,
+      captureOutput: i === 0 && captureFirstOutput
+    });
+
+    if (!result.success) {
+      console.error(`${Colors.RED}❌ Prompt ${i + 1} failed${Colors.NC}`);
+      return { success: false, sessionId };
+    }
+
+    // Capture session ID from first prompt
+    if (i === 0 && result.sessionId) {
+      sessionId = result.sessionId;
+      console.log(`📝 Session ID: ${sessionId}`);
+    }
+
+    // Clean up temp file if any
+    if (result.tempFile) {
+      try {
+        unlinkSync(result.tempFile);
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+    }
+  }
+
+  return { success: true, sessionId };
 }
 
 /**

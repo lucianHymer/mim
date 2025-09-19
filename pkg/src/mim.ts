@@ -1,5 +1,18 @@
 #!/usr/bin/env node
 
+/**
+ * mim.ts - Single-file bundled version of the mim TypeScript CLI
+ *
+ * This file contains all the mim source code concatenated into a single file.
+ * It is compiled by tsconfig.json into scripts/mim.js, then converted to mim.cjs
+ * by the build script. This approach allows distributing mim as a single
+ * self-contained CommonJS file that works without dependencies.
+ *
+ * The modular source files (claude.ts, commands/*.ts, etc.) are the primary
+ * development files. This file is auto-generated or manually maintained as
+ * the bundled distribution version.
+ */
+
 import { spawn } from 'child_process';
 import { createWriteStream, mkdtempSync, unlinkSync, existsSync, readFileSync } from 'fs';
 import { tmpdir } from 'os';
