@@ -1,7 +1,8 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "CommonJS",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "lib": ["ES2022"],
     "outDir": "./scripts",
     "strict": true,
@@ -14,5 +15,6 @@
     "removeComments": true,
     "allowJs": false
   },
-  "files": ["src/mim.ts", "src/mim-server.ts"]
+  "files": ["src/mim.cts"],
+  "include": ["src/**/*.cts"]
 }

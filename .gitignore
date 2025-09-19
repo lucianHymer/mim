@@ -2,8 +2,6 @@
 node_modules/
 
 # Compiled TypeScript output
-pkg/scripts/mim.js
-pkg/scripts/mim.cjs
 pkg/dist/
 
 # IDE files
