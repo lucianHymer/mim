@@ -57,20 +57,26 @@ if [ -f ".claude/servers/mim.js" ]; then
     log_info "Removed old mim.js file"
 fi
 
-# Download mim script
+# Download mim script (TypeScript-compiled version)
 mkdir -p .claude/scripts
-curl -sSL "$BASE_URL/scripts/mim" -o .claude/scripts/mim
-chmod +x .claude/scripts/mim
-log_info "Downloaded mim script"
+curl -sSL "$BASE_URL/scripts/mim.cjs" -o .claude/scripts/mim.cjs
+chmod +x .claude/scripts/mim.cjs
+log_info "Downloaded mim script (TypeScript version)"
 
 # Create agents directory and download inquisitor agent
 mkdir -p .claude/agents
 curl -sSL "$BASE_URL/claude/agents/inquisitor.md" -o .claude/agents/inquisitor.md
 log_info "Downloaded inquisitor agent"
 
-# Create softlink in repository root
-ln -sf .claude/scripts/mim mim
-log_info "Created softlink to mim in repository root"
+# Create wrapper script in repository root
+cat > mim << 'EOF'
+#!/bin/bash
+# Mim - Norse memory keeper for Claude Code
+# Wrapper script that calls the TypeScript-compiled mim script
+node "$(dirname "$0")/.claude/scripts/mim.cjs" "$@"
+EOF
+chmod +x mim
+log_info "Created mim wrapper script in repository root"
 
 # Handle CLAUDE.md
 if [ -f "CLAUDE.md" ]; then

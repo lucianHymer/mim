@@ -1,0 +1,14 @@
+{
+  "name": "mim-cli",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mim - Persistent Memory for Claude Code",
+  "scripts": {
+    "build": "npx -y typescript@5 && mv scripts/mim.js scripts/mim.cjs && chmod +x scripts/mim.cjs",
+    "clean": "rm -rf scripts/mim.cjs scripts/mim.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
