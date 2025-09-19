@@ -32,8 +32,9 @@ fi
 
 log_info "Installing Mim knowledge system..."
 
-# Base URL for downloading files
-BASE_URL="https://raw.githubusercontent.com/lucianHymer/mim/main/pkg"
+# Base URLs for downloading files
+RAW_BASE_URL="https://raw.githubusercontent.com/lucianHymer/mim/main/pkg"
+RELEASE_URL="https://github.com/lucianHymer/mim/releases/latest/download"
 
 # Create .claude directory structure
 log_info "Creating .claude directory structure..."
@@ -44,12 +45,12 @@ mkdir -p .claude/servers
 log_info "Downloading Mim components..."
 
 # Download knowledge INSTRUCTIONS.md
-curl -sSL "$BASE_URL/claude/knowledge/INSTRUCTIONS.md" -o .claude/knowledge/INSTRUCTIONS.md
+curl -sSL "$RAW_BASE_URL/claude/knowledge/INSTRUCTIONS.md" -o .claude/knowledge/INSTRUCTIONS.md
 log_info "Downloaded INSTRUCTIONS.md"
 
-# Download mim.cjs server (using .cjs for consistent CommonJS handling)
-curl -sSL "$BASE_URL/claude/servers/mim.cjs" -o .claude/servers/mim.cjs
-log_info "Downloaded mim.cjs server"
+# Download mim.cjs server from latest release
+curl -sSL "$RELEASE_URL/mim-server.cjs" -o .claude/servers/mim.cjs
+log_info "Downloaded mim.cjs server from latest release"
 
 # Clean up old .js version if it exists
 if [ -f ".claude/servers/mim.js" ]; then
@@ -57,15 +58,15 @@ if [ -f ".claude/servers/mim.js" ]; then
     log_info "Removed old mim.js file"
 fi
 
-# Download mim script (TypeScript-compiled version)
+# Download mim script from latest release
 mkdir -p .claude/scripts
-curl -sSL "$BASE_URL/scripts/mim.cjs" -o .claude/scripts/mim.cjs
+curl -sSL "$RELEASE_URL/mim.cjs" -o .claude/scripts/mim.cjs
 chmod +x .claude/scripts/mim.cjs
-log_info "Downloaded mim script (TypeScript version)"
+log_info "Downloaded mim script from latest release"
 
 # Create agents directory and download inquisitor agent
 mkdir -p .claude/agents
-curl -sSL "$BASE_URL/claude/agents/inquisitor.md" -o .claude/agents/inquisitor.md
+curl -sSL "$RAW_BASE_URL/claude/agents/inquisitor.md" -o .claude/agents/inquisitor.md
 log_info "Downloaded inquisitor agent"
 
 # Create wrapper script in repository root
@@ -88,12 +89,12 @@ if [ -f "CLAUDE.md" ]; then
     else
         # Download and append content
         echo "" >> CLAUDE.md
-        curl -sSL "$BASE_URL/append-to-CLAUDE.md" >> CLAUDE.md
+        curl -sSL "$RAW_BASE_URL/append-to-CLAUDE.md" >> CLAUDE.md
         log_info "Appended Mim configuration to CLAUDE.md"
     fi
 else
     log_info "Creating CLAUDE.md with Mim configuration..."
-    curl -sSL "$BASE_URL/append-to-CLAUDE.md" > CLAUDE.md
+    curl -sSL "$RAW_BASE_URL/append-to-CLAUDE.md" > CLAUDE.md
     log_info "Created CLAUDE.md"
 fi
 
@@ -107,12 +108,12 @@ if [ -f ".gitattributes" ]; then
     else
         # Download and append content
         echo "" >> .gitattributes
-        curl -sSL "$BASE_URL/append-to-gitattributes" >> .gitattributes
+        curl -sSL "$RAW_BASE_URL/append-to-gitattributes" >> .gitattributes
         log_info "Appended Mim merge strategies to .gitattributes"
     fi
 else
     log_info "Creating .gitattributes with Mim merge strategies..."
-    curl -sSL "$BASE_URL/append-to-gitattributes" > .gitattributes
+    curl -sSL "$RAW_BASE_URL/append-to-gitattributes" > .gitattributes
     log_info "Created .gitattributes"
 fi
 
@@ -124,7 +125,7 @@ if [ -f ".mcp.json" ]; then
     if command -v jq >/dev/null 2>&1; then
         # Download the mim config
         TEMP_MCP=$(mktemp)
-        curl -sSL "$BASE_URL/append-to-mcp.json" -o "$TEMP_MCP"
+        curl -sSL "$RAW_BASE_URL/append-to-mcp.json" -o "$TEMP_MCP"
         
         # Check if mim server already exists
         if jq -e '.mcpServers.mim' .mcp.json >/dev/null 2>&1; then
@@ -144,7 +145,7 @@ if [ -f ".mcp.json" ]; then
     else
         log_warn "jq not found. Please manually add the following to your .mcp.json:"
         echo ""
-        curl -sSL "$BASE_URL/append-to-mcp.json"
+        curl -sSL "$RAW_BASE_URL/append-to-mcp.json"
         echo ""
     fi
 else
