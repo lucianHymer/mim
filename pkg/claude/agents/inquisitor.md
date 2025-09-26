@@ -34,6 +34,12 @@ Return markdown with these sections:
 - File paths and line numbers
 - What the code actually does
 
+### Location Context
+- Is this knowledge specific to a single file/function? Which one?
+- Is this knowledge specific to a directory/module? Which one?
+- Or is this knowledge cross-cutting (affects multiple areas)?
+- Recommend placement: global, local (specify directory), or code comment (specify file:line)
+
 ### Changes Detected
 - Recent modifications (if any)
 - Git history showing evolution

@@ -66,12 +66,13 @@ Your task:
 
 The inquisitor agents will return structured reports with:
 - What I Found (current state)
+- Location Context (where this knowledge belongs: global, local directory, or code comment)
 - Changes Detected (recent modifications)
 - Related Knowledge (similar entries)
 - Observations (discrepancies/issues)
 
 Launch as many inquisitor agents as needed to thoroughly verify the knowledge base.
-Aim for comprehensive coverage of all knowledge entries.`,
+Aim for comprehensive coverage of all knowledge entries, including location recommendations.`,
 
         // Phase 2: Process findings
         `Process all inquisitor findings and create distill-report.md.
@@ -79,9 +80,13 @@ Aim for comprehensive coverage of all knowledge entries.`,
 Based on the research from all inquisitor agents:
 
 1. **ANALYZE ALL FINDINGS**:
-   - Synthesize research from all inquisitors
+   - Synthesize research from all inquisitors, including their location recommendations
    - Identify exact duplicates, near-duplicates, conflicts, outdated info, junk
-   - Categorize: AUTO_FIX (clear issues) vs REQUIRES_REVIEW (ambiguous)
+   - Categorize knowledge by location:
+     * **Code Comment Candidates**: Very specific implementation details about a single function/class
+     * **Local Knowledge**: Knowledge specific to files in a particular directory/module
+     * **Global Knowledge**: Architecture, patterns, dependencies affecting multiple areas
+   - Categorize issues: AUTO_FIX (clear issues) vs REQUIRES_REVIEW (ambiguous)
 
 2. **AUTO-FIX CLEAR ISSUES**:
    - Remove exact duplicate sections
@@ -94,8 +99,37 @@ Based on the research from all inquisitor agents:
    ## Automated Changes
    [List all auto-fixes made with file names and descriptions]
 
+   ## Knowledge Relocation
+   ### To Code Comments
+   [List entries that should become code comments]
+   For each:
+   - **Knowledge**: Brief description
+   - **Current Location**: .claude/knowledge/...
+   - **Suggested Location**: file:line where comment should go
+   - **Rationale**: Why this belongs as a code comment
+
+   <!-- USER INPUT START -->
+   [Approve/modify/reject each suggestion]
+   <!-- USER INPUT END -->
+
+   ### To Local Knowledge
+   [List entries that should move to subdirectory .knowledge files]
+   For each:
+   - **Knowledge**: Brief description
+   - **Current Location**: .claude/knowledge/...
+   - **Suggested Location**: subdirectory/.knowledge
+   - **Rationale**: Why this is directory-specific
+
+   <!-- USER INPUT START -->
+   [Approve/modify/reject each suggestion]
+   <!-- USER INPUT END -->
+
+   ### Remains Global
+   [List entries that should stay in .claude/knowledge/]
+   - Brief list of topics that are truly cross-cutting
+
    ## Requires Review
-   [List conflicts needing human guidance]
+   [List other conflicts needing human guidance]
 
    For each review item:
    - **Issue**: Clear description
@@ -127,22 +161,29 @@ Review your synthesis and distill-report.md:
    - Look for recently deleted code references
    - Flag ambiguous references
 
-2. **VALIDATION**:
-   - Ensure no valuable knowledge is accidentally deleted
+2. **KNOWLEDGE RELOCATION VALIDATION**:
+   - Verify suggested directories for local knowledge actually exist
+   - Ensure code comment suggestions have valid file:line locations
+   - Check for circular references (subdirectory knowledge referencing parent)
+   - Validate that truly global knowledge isn't being misclassified as local
+   - Consider if any knowledge might be relevant to multiple locations
+
+3. **VALIDATION**:
+   - Ensure no valuable knowledge is accidentally deleted or misplaced
    - Verify auto-fixes are truly safe
-   - Double-check categorization (auto-fix vs review)
+   - Double-check categorization (global vs local vs code comment)
    - Confirm all inquisitor findings were addressed
 
-3. **USER INPUT DELIMITER VERIFICATION**:
-   - CRITICAL: Verify EACH review item has <!-- USER INPUT START --> and <!-- USER INPUT END --> delimiters
-   - Each review item MUST have its own pair of delimiters
-   - No review item should be missing these delimiters
+4. **USER INPUT DELIMITER VERIFICATION**:
+   - CRITICAL: Verify EACH review item AND relocation suggestion has <!-- USER INPUT START --> and <!-- USER INPUT END --> delimiters
+   - Each item MUST have its own pair of delimiters
+   - This includes Knowledge Relocation sections
    - Fix any missing delimiters immediately
 
-4. **REFINEMENT**:
-   - Adjust recommendations if needed
+5. **REFINEMENT**:
+   - Adjust relocation recommendations if needed
    - Add any missed issues
-   - Improve clarity of review items
+   - Improve clarity of suggestions
    - Update distill-report.md with any changes
 
 Take your time to think through edge cases and ensure the report is thorough and accurate.`
@@ -158,24 +199,52 @@ Take your time to think through edge cases and ensure the report is thorough and
    - Check if there are any <!-- USER INPUT START --> ... <!-- USER INPUT END --> blocks
    - If present, parse the user's decisions/instructions from between these tags
 
-2. **APPLY USER DECISIONS TO KNOWLEDGE FILES (if any)**:
-   - If user input blocks exist, apply the requested changes to the appropriate files
-   - Knowledge files are in .claude/knowledge/ (various topic .md files)
-   - Special files: KNOWLEDGE_MAP.md (user index) and KNOWLEDGE_MAP_CLAUDE.md (Claude index)
-   - DO NOT DELETE either KNOWLEDGE_MAP, we want both the markdown-link and claude-reference versions
-   - Make precise edits based on user instructions
-   - If changes affect the knowledge maps, update both consistently
+2. **APPLY KNOWLEDGE RELOCATION DECISIONS**:
+   If approved relocations exist in the Knowledge Relocation section:
 
-3. **DELETE THE REPORT**:
-   - After successfully applying any refinements (or if only auto-fixes), delete ./distill-report.md
+   **For "To Code Comments" approved items**:
+   - Note these for user to manually add (we cannot automatically modify code files)
+   - Create a summary file `.claude/knowledge/CODE_COMMENTS_TODO.md` listing:
+     * The knowledge content to add as comment
+     * The specific file:line location
+     * Suggested comment format
+
+   **For "To Local Knowledge" approved items**:
+   - Create `.knowledge/` directory structure in the specified subdirectory:
+     * Create `<subdir>/.knowledge/` directory if it doesn't exist
+     * Create `<subdir>/.knowledge/KNOWLEDGE_MAP_CLAUDE.md` with @ references
+     * Create `<subdir>/.knowledge/KNOWLEDGE_MAP.md` with markdown links
+     * Create appropriate category subdirectories (patterns/, gotchas/, etc.)
+     * Move knowledge content to appropriate category files
+   - Create or update subdirectory's `CLAUDE.md` if needed:
+     * Add `@./.knowledge/KNOWLEDGE_MAP_CLAUDE.md` reference if not already present
+     * Preserve any existing CLAUDE.md content
+   - Update `.gitattributes` in subdirectory to include: `.knowledge/**/*.md merge=ours`
+   - Remove relocated entries from global `.claude/knowledge/` files
+
+   **Update Knowledge Maps**:
+   - Update KNOWLEDGE_MAP.md to reference or exclude relocated items
+   - Update KNOWLEDGE_MAP_CLAUDE.md with appropriate @ references
+   - For local knowledge, optionally add references to subdirectory locations
+
+3. **APPLY OTHER USER DECISIONS (if any)**:
+   - Apply any other requested changes from "Requires Review" section
+   - Knowledge files are in .claude/knowledge/ (various topic .md files)
+   - Make precise edits based on user instructions
+
+4. **DELETE THE REPORT**:
+   - After successfully applying all refinements, delete ./distill-report.md
    - This indicates the refinement session is complete
 
-4. **VERIFICATION**:
-   - If user decisions were applied, ensure all changes were applied correctly
-   - Verify consistency between KNOWLEDGE_MAP.md and KNOWLEDGE_MAP_CLAUDE.md if modified
-   - Report completion status and list of files modified (if any)
+5. **VERIFICATION**:
+   - Ensure all approved relocations were processed correctly
+   - Verify `.knowledge/` directory structure created in correct subdirectories
+   - Verify each `.knowledge/` contains KNOWLEDGE_MAP_CLAUDE.md and KNOWLEDGE_MAP.md
+   - Check subdirectory CLAUDE.md files have `@./.knowledge/KNOWLEDGE_MAP_CLAUDE.md` references
+   - Verify consistency between local and global knowledge maps
+   - Report completion status and list all files created/modified
 
-IMPORTANT: The report is at ./distill-report.md (repository root). If there are no user input blocks, just delete the report to mark completion (changes were already made during distill).`
+IMPORTANT: The report is at ./distill-report.md (repository root). Process Knowledge Relocation section first, then other changes.`
       ]
     }
   ]
@@ -185,11 +254,11 @@ IMPORTANT: The report is at ./distill-report.md (repository root). If there are 
 export const SYSTEM_PROMPTS = {
   coalesce: "You are Mím's knowledge processor. Your role is to organize raw captured knowledge into structured documentation. You must process every entry, categorize it appropriately, update knowledge maps, and ensure no knowledge is lost.",
 
-  distillPhase1: "You are Mím's distillation orchestrator, Phase 1: Knowledge Verification. You coordinate multiple inquisitor agents to research and verify each knowledge entry against the current codebase. Launch agents systematically to ensure comprehensive coverage.",
+  distillPhase1: "You are Mím's distillation orchestrator, Phase 1: Knowledge Verification. You coordinate multiple inquisitor agents to research and verify each knowledge entry against the current codebase. Launch agents systematically to ensure comprehensive coverage and location context for each entry.",
 
-  distillPhase2: "You are Mím's distillation synthesizer, Phase 2: Finding Analysis. You process all inquisitor research to identify duplicates, conflicts, and outdated information. You must create a clear distill-report.md with proper USER INPUT delimiters for each review item.",
+  distillPhase2: "You are Mím's distillation synthesizer, Phase 2: Finding Analysis. You process all inquisitor research to identify duplicates, conflicts, and outdated information. You also categorize knowledge by appropriate location (global, local directory, or code comment). Create a clear distill-report.md with proper USER INPUT delimiters for each review item and relocation suggestion.",
 
-  distillPhase3: "You are Mím's distillation validator, Phase 3: Quality Assurance. You perform edge case analysis and validation of the distill report. Ensure all USER INPUT delimiters are present, no valuable knowledge is lost, and all recommendations are accurate.",
+  distillPhase3: "You are Mím's distillation validator, Phase 3: Quality Assurance. You perform edge case analysis and validation of the distill report, including knowledge relocation suggestions. Ensure all USER INPUT delimiters are present, relocation paths are valid, and no valuable knowledge is lost.",
 
-  refine: "You are Mím's refinement executor. Your role is to apply user decisions from the distill report to the knowledge base. Parse user input sections carefully, apply changes precisely, and clean up the report when complete."
+  refine: "You are Mím's refinement executor. Your role is to apply user decisions from the distill report, including knowledge relocations to subdirectory .knowledge files or code comment suggestions. Parse user input sections carefully, create local knowledge files as needed, and clean up the report when complete."
 };
