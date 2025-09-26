@@ -210,12 +210,16 @@ Take your time to think through edge cases and ensure the report is thorough and
      * Suggested comment format
 
    **For "To Local Knowledge" approved items**:
-   - Create `.knowledge` file in the specified subdirectory
-   - Move the knowledge content from global to local file
+   - Create `.knowledge/` directory structure in the specified subdirectory:
+     * Create `<subdir>/.knowledge/` directory if it doesn't exist
+     * Create `<subdir>/.knowledge/KNOWLEDGE_MAP_CLAUDE.md` with @ references
+     * Create `<subdir>/.knowledge/KNOWLEDGE_MAP.md` with markdown links
+     * Create appropriate category subdirectories (patterns/, gotchas/, etc.)
+     * Move knowledge content to appropriate category files
    - Create or update subdirectory's `CLAUDE.md` if needed:
-     * Add `@./.knowledge` reference if not already present
+     * Add `@./.knowledge/KNOWLEDGE_MAP_CLAUDE.md` reference if not already present
      * Preserve any existing CLAUDE.md content
-   - Update `.gitattributes` in subdirectory to include: `*.knowledge merge=ours`
+   - Update `.gitattributes` in subdirectory to include: `.knowledge/**/*.md merge=ours`
    - Remove relocated entries from global `.claude/knowledge/` files
 
    **Update Knowledge Maps**:
@@ -234,9 +238,10 @@ Take your time to think through edge cases and ensure the report is thorough and
 
 5. **VERIFICATION**:
    - Ensure all approved relocations were processed correctly
-   - Verify `.knowledge` files created in correct directories
-   - Check subdirectory CLAUDE.md files have @ references
-   - Verify consistency between KNOWLEDGE_MAP.md and KNOWLEDGE_MAP_CLAUDE.md
+   - Verify `.knowledge/` directory structure created in correct subdirectories
+   - Verify each `.knowledge/` contains KNOWLEDGE_MAP_CLAUDE.md and KNOWLEDGE_MAP.md
+   - Check subdirectory CLAUDE.md files have `@./.knowledge/KNOWLEDGE_MAP_CLAUDE.md` references
+   - Verify consistency between local and global knowledge maps
    - Report completion status and list all files created/modified
 
 IMPORTANT: The report is at ./distill-report.md (repository root). Process Knowledge Relocation section first, then other changes.`
