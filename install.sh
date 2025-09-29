@@ -48,9 +48,9 @@ log_info "Downloading Mim components..."
 curl -sSL "$RAW_BASE_URL/claude/knowledge/INSTRUCTIONS.md" -o .claude/knowledge/INSTRUCTIONS.md
 log_info "Downloaded INSTRUCTIONS.md"
 
-# Download mim.cjs server from latest release
-curl -sSL "$RELEASE_URL/mim-server.cjs" -o .claude/servers/mim.cjs
-log_info "Downloaded mim.cjs server from latest release"
+# Download mim.cjs server from raw source
+curl -sSL "$RAW_BASE_URL/claude/servers/mim.cjs" -o .claude/servers/mim.cjs
+log_info "Downloaded mim.cjs server from raw source"
 
 # Clean up old .js version if it exists
 if [ -f ".claude/servers/mim.js" ]; then
