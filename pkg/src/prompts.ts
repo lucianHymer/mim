@@ -1,7 +1,7 @@
-import { Command } from './types';
+import { Command } from "./types";
 
 export const COALESCE_COMMAND: Command = {
-  name: 'coalesce',
+  name: "coalesce",
   sessions: [
     {
       prompts: [
@@ -43,14 +43,14 @@ Documentation structure to create and maintain:
 |-- KNOWLEDGE_MAP.md        # User-facing index with markdown links
 |-- KNOWLEDGE_MAP_CLAUDE.md # Claude-facing index with RELATIVE @ references
 
-After completing all updates, inform the user that documentation has been updated.`
-      ]
-    }
-  ]
+After completing all updates, inform the user that documentation has been updated.`,
+      ],
+    },
+  ],
 };
 
 export const DISTILL_COMMAND: Command = {
-  name: 'distill',
+  name: "distill",
   sessions: [
     // Generate session (3 prompts)
     {
@@ -186,8 +186,8 @@ Review your synthesis and distill-report.md:
    - Improve clarity of suggestions
    - Update distill-report.md with any changes
 
-Take your time to think through edge cases and ensure the report is thorough and accurate.`
-      ]
+Take your time to think through edge cases and ensure the report is thorough and accurate.`,
+      ],
     },
     // Refine session (1 prompt)
     {
@@ -204,23 +204,23 @@ Take your time to think through edge cases and ensure the report is thorough and
 
    **For "To Code Comments" approved items**:
    - Note these for user to manually add (we cannot automatically modify code files)
-   - Create a summary file `.claude/knowledge/CODE_COMMENTS_TODO.md` listing:
+   - Create a summary file '.claude/knowledge/CODE_COMMENTS_TODO.md' listing:
      * The knowledge content to add as comment
      * The specific file:line location
      * Suggested comment format
 
    **For "To Local Knowledge" approved items**:
-   - Create `.knowledge/` directory structure in the specified subdirectory:
-     * Create `<subdir>/.knowledge/` directory if it doesn't exist
-     * Create `<subdir>/.knowledge/KNOWLEDGE_MAP_CLAUDE.md` with @ references
-     * Create `<subdir>/.knowledge/KNOWLEDGE_MAP.md` with markdown links
+   - Create '.knowledge/' directory structure in the specified subdirectory:
+     * Create '<subdir>/.knowledge/' directory if it doesn't exist
+     * Create '<subdir>/.knowledge/KNOWLEDGE_MAP_CLAUDE.md' with @ references
+     * Create '<subdir>/.knowledge/KNOWLEDGE_MAP.md' with markdown links
      * Create appropriate category subdirectories (patterns/, gotchas/, etc.)
      * Move knowledge content to appropriate category files
-   - Create or update subdirectory's `CLAUDE.md` if needed:
-     * Add `@./.knowledge/KNOWLEDGE_MAP_CLAUDE.md` reference if not already present
+   - Create or update subdirectory's 'CLAUDE.md' if needed:
+     * Add '@./.knowledge/KNOWLEDGE_MAP_CLAUDE.md' reference if not already present
      * Preserve any existing CLAUDE.md content
-   - Update `.gitattributes` in subdirectory to include: `.knowledge/**/*.md merge=ours`
-   - Remove relocated entries from global `.claude/knowledge/` files
+   - Update '.gitattributes' in subdirectory to include: '.knowledge/**/*.md merge=ours'
+   - Remove relocated entries from global '.claude/knowledge/' files
 
    **Update Knowledge Maps**:
    - Update KNOWLEDGE_MAP.md to reference or exclude relocated items
@@ -238,27 +238,33 @@ Take your time to think through edge cases and ensure the report is thorough and
 
 5. **VERIFICATION**:
    - Ensure all approved relocations were processed correctly
-   - Verify `.knowledge/` directory structure created in correct subdirectories
-   - Verify each `.knowledge/` contains KNOWLEDGE_MAP_CLAUDE.md and KNOWLEDGE_MAP.md
-   - Check subdirectory CLAUDE.md files have `@./.knowledge/KNOWLEDGE_MAP_CLAUDE.md` references
+   - Verify '.knowledge/' directory structure created in correct subdirectories
+   - Verify each '.knowledge/' contains KNOWLEDGE_MAP_CLAUDE.md and KNOWLEDGE_MAP.md
+   - Check subdirectory CLAUDE.md files have '@./.knowledge/KNOWLEDGE_MAP_CLAUDE.md' references
    - Verify consistency between local and global knowledge maps
    - Report completion status and list all files created/modified
 
-IMPORTANT: The report is at ./distill-report.md (repository root). Process Knowledge Relocation section first, then other changes.`
-      ]
-    }
-  ]
+IMPORTANT: The report is at ./distill-report.md (repository root). Process Knowledge Relocation section first, then other changes.`,
+      ],
+    },
+  ],
 };
 
 // System prompts for different commands/phases
 export const SYSTEM_PROMPTS = {
-  coalesce: "You are Mím's knowledge processor. Your role is to organize raw captured knowledge into structured documentation. You must process every entry, categorize it appropriately, update knowledge maps, and ensure no knowledge is lost.",
+  coalesce:
+    "You are Mím's knowledge processor. Your role is to organize raw captured knowledge into structured documentation. You must process every entry, categorize it appropriately, update knowledge maps, and ensure no knowledge is lost.",
 
-  distillPhase1: "You are Mím's distillation orchestrator, Phase 1: Knowledge Verification. You coordinate multiple inquisitor agents to research and verify each knowledge entry against the current codebase. Launch agents systematically to ensure comprehensive coverage and location context for each entry.",
+  distillPhase1:
+    "You are Mím's distillation orchestrator, Phase 1: Knowledge Verification. You coordinate multiple inquisitor agents to research and verify each knowledge entry against the current codebase. Launch agents systematically to ensure comprehensive coverage and location context for each entry.",
 
-  distillPhase2: "You are Mím's distillation synthesizer, Phase 2: Finding Analysis. You process all inquisitor research to identify duplicates, conflicts, and outdated information. You also categorize knowledge by appropriate location (global, local directory, or code comment). Create a clear distill-report.md with proper USER INPUT delimiters for each review item and relocation suggestion.",
+  distillPhase2:
+    "You are Mím's distillation synthesizer, Phase 2: Finding Analysis. You process all inquisitor research to identify duplicates, conflicts, and outdated information. You also categorize knowledge by appropriate location (global, local directory, or code comment). Create a clear distill-report.md with proper USER INPUT delimiters for each review item and relocation suggestion.",
 
-  distillPhase3: "You are Mím's distillation validator, Phase 3: Quality Assurance. You perform edge case analysis and validation of the distill report, including knowledge relocation suggestions. Ensure all USER INPUT delimiters are present, relocation paths are valid, and no valuable knowledge is lost.",
+  distillPhase3:
+    "You are Mím's distillation validator, Phase 3: Quality Assurance. You perform edge case analysis and validation of the distill report, including knowledge relocation suggestions. Ensure all USER INPUT delimiters are present, relocation paths are valid, and no valuable knowledge is lost.",
 
-  refine: "You are Mím's refinement executor. Your role is to apply user decisions from the distill report, including knowledge relocations to subdirectory .knowledge files or code comment suggestions. Parse user input sections carefully, create local knowledge files as needed, and clean up the report when complete."
+  refine:
+    "You are Mím's refinement executor. Your role is to apply user decisions from the distill report, including knowledge relocations to subdirectory .knowledge files or code comment suggestions. Parse user input sections carefully, create local knowledge files as needed, and clean up the report when complete.",
 };
+
