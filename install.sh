@@ -150,7 +150,7 @@ if [ -f ".mcp.json" ]; then
     fi
 else
     log_info "Creating .mcp.json with Mim server configuration..."
-    curl -sSL "$BASE_URL/append-to-mcp.json" > .mcp.json
+    curl -sSL "$RAW_BASE_URL/append-to-mcp.json" > .mcp.json
     # Update to use .cjs
     if command -v jq >/dev/null 2>&1; then
         jq '.mcpServers.mim.command = "node" | .mcpServers.mim.args[0] = ".claude/servers/mim.cjs"' .mcp.json > .mcp.json.tmp && mv .mcp.json.tmp .mcp.json
