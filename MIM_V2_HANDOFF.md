@@ -654,3 +654,25 @@ Arbiter is a hierarchical AI orchestration system with a gamified TUI. **Everyth
 - Player auto-walk uses existing Arbiter sprite.walk() method
 - Structured outputs use Zod schemas - see Arbiter for patterns
 - biome for linting (same as Arbiter)
+
+If you upgraded to Zod 4 and your structured outputs stopped working (SDK returns plain text instead of JSON, structured_output is undefined despite subtype: "success"), it's because Zod 4's z.toJSONSchema() adds
+   a "$schema" field that the Anthropic API doesn't handle.
+
+  Fix: Strip the $schema field before passing to the SDK:
+
+  function stripSchemaField(schema: Record<string, unknown>): Record<string, unknown> {
+    const { $schema, ...rest } = schema;
+    return rest;
+  }
+
+  const mySchema = stripSchemaField(z.toJSONSchema(MyZodSchema));
+
+  // Then use it
+  query({
+    prompt: '...',
+    options: {
+      outputFormat: { type: 'json_schema', schema: mySchema }
+    }
+  })
+
+  The old zod-to-json-schema library didn't include $schema, but Zod 4's native method does.

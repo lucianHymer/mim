@@ -1,9 +1,0 @@
-#!/bin/bash
-# Mim - Norse memory keeper for Claude Code
-# Wrapper script that calls the TypeScript-compiled mim script
-# In development, use pkg/scripts/mim.cjs, in production use .claude/scripts/mim.cjs
-if [ -f "$(dirname "$0")/pkg/scripts/mim.cjs" ]; then
-    node "$(dirname "$0")/pkg/scripts/mim.cjs" "$@"
-else
-    node "$(dirname "$0")/.claude/scripts/mim.cjs" "$@"
-fi
