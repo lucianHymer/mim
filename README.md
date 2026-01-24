@@ -79,4 +79,10 @@ This creates the `.claude/knowledge/` directory structure and configures the MCP
 
 The knowledge is loaded into Claude's memory through your project's `CLAUDE.md` file. You can use `/memory` and `/context` in Claude Code to verify it's working as expected.
 
-All remembered knowledge is preserved in `.claude/knowledge/session.md` until processed through the review system.
+When Claude calls `remember()`, knowledge entries are queued for intelligent processing. The Queue Processor agent automatically:
+- Deduplicates entries against existing knowledge
+- Detects conflicts with current documentation
+- Writes new knowledge directly to organized category files (architecture, patterns, dependencies, workflows, gotchas)
+- Creates pending reviews for conflicts that need human decision
+
+Run `mim review` to resolve any pending reviews through the Bridge Guardian game.
