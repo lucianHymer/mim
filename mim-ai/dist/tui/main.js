@@ -224,8 +224,8 @@ class MimGame {
             wellspringSessionId: null,
             agentProcessing: false,
             agentDone: false,
-            otherInputActive: false,
-            otherInputText: '',
+            textInputMode: false,
+            textInputValue: '',
         };
         this.tracker = {
             lastTileFrame: -1,
@@ -385,7 +385,12 @@ class MimGame {
                     this.handleCharacterSelectInput(key);
                     break;
                 case 'BRIDGE_GUARDIAN':
-                    this.handleBridgeGuardianInput(key);
+                    if (this.state.textInputMode) {
+                        this.handleTextInput(key);
+                    }
+                    else {
+                        this.handleBridgeGuardianInput(key);
+                    }
                     break;
                 case 'WELLSPRING':
                     this.handleWellspringInput(key);
@@ -798,7 +803,9 @@ class MimGame {
                 }
                 break;
             case 'ESCAPE':
-                this.transitionTo('CHARACTER_SELECT');
+                this.transitionTo('CHARACTER_SELECT').catch((err) => {
+                    logError(AGENTS.TUI, `Transition error: ${err.message}`);
+                });
                 break;
         }
     }

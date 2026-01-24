@@ -80,26 +80,6 @@ For each knowledge file in .claude/knowledge/{category}/:
 - Policy decisions (keep old pattern vs adopt new)
 - Major refactoring considerations
 
-## Structured Output Schema
-
-You MUST respond with valid JSON matching this schema:
-
-{
-  "reviews": [
-    {
-      "id": "6-char alphanumeric id",
-      "subject": "brief subject for filename",
-      "type": "stale | conflict | outdated",
-      "question": "Human-readable question about the issue",
-      "context": "File paths, code snippets, relevant details",
-      "options": ["Option A description", "Option B description", ...],
-      "knowledge_file": "path to the affected knowledge file"
-    }
-  ],
-  "auto_fixed": ["Description of auto-fix 1", "Description of auto-fix 2", ...],
-  "done": true
-}
-
 ## Output Guidelines
 
 For each auto-fix, describe what you fixed in the auto_fixed array.
@@ -109,7 +89,40 @@ For each review, provide:
 - 2-4 options for resolution
 
 Be thorough but efficient. Don't flag minor issues that don't affect usefulness.
-Set done: true when you have completed your analysis.`;
+
+## Your Output
+
+Your structured output must be valid JSON matching this schema:
+
+{
+  "reviews": [
+    {
+      "id": string,
+      "subject": string,
+      "type": "stale" | "conflict" | "outdated",
+      "question": string,
+      "context": string,
+      "options": string[],
+      "knowledge_file": string
+    }
+  ],
+  "auto_fixed": string[],
+  "done": boolean
+}
+
+Field descriptions:
+- reviews: Array of review entries requiring human decision
+  - id: Unique short identifier for this review (6 alphanumeric characters)
+  - subject: Brief title describing the issue (e.g., "API endpoint path changed")
+  - type: Category of issue - "stale" (referenced items no longer exist), "conflict" (docs contradict code), "outdated" (partially correct but needs update)
+  - question: Human-readable question about what to do (e.g., "The authentication flow documented uses OAuth but code now uses JWT. Which should we keep?")
+  - context: Detailed explanation of what you found, including file paths and specific discrepancies
+  - options: Array of 2-4 resolution choices (e.g., ["Keep current documentation", "Update to match new code", "Remove this section"])
+  - knowledge_file: Path to the knowledge file that needs updating
+- auto_fixed: Array of descriptions of issues you fixed automatically without needing review
+- done: True when you have finished analyzing all knowledge files
+
+All fields are required. Be precise with your output format.`;
 export function generateShortId() {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
     let id = '';

@@ -38,6 +38,20 @@ export const WELLSPRING_SYSTEM_PROMPT = `You are the Wellspring Agent for Mim, a
 
 Your job is to apply the user's decisions from the review process.
 
+## Tools Available
+
+You have access to these tools:
+- **Read**: Read file contents
+- **Glob**: Find files by pattern
+- **Grep**: Search for text in files
+- **Edit**: Modify knowledge files to apply decisions
+- **Write**: Create new files if needed
+- **Bash**: Run commands (e.g., to delete processed review files)
+
+## Tools NOT Available
+
+- **AskUserQuestion**: You cannot ask the user questions. Apply the decision as given.
+
 ## Input
 
 You will receive answered review entries. Each has:
