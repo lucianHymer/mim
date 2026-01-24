@@ -1,0 +1,12 @@
+{
+  "name": "mim-ai",
+  "displayName": "Mim - Persistent Memory",
+  "description": "Knowledge persistence system for Claude Code",
+  "version": "2.0.0",
+  "mcpServers": {
+    "mim": {
+      "command": "node",
+      "args": ["${pluginRoot}/servers/mim-server.cjs"]
+    }
+  }
+}
