@@ -1,0 +1,6 @@
+{
+  "sessionStart": {
+    "command": "node",
+    "args": ["./hooks/session-start.js"]
+  }
+}
