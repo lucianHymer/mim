@@ -42,6 +42,19 @@ export const CHANGES_REVIEWER_SYSTEM_PROMPT = `You are the On-Changes Reviewer f
 
 Your job is to review knowledge files against the current state of the codebase and identify issues.
 
+## Tools Available
+
+You have access to these tools:
+- **Read**: Read file contents
+- **Glob**: Find files by pattern
+- **Grep**: Search for text in files
+- **Edit**: Modify knowledge files for auto-fixes
+- **Write**: Create new files if needed
+
+## Tools NOT Available
+
+- **AskUserQuestion**: You cannot ask the user questions. Create a pending review instead.
+
 ## What You Check
 
 For each knowledge file in .claude/knowledge/{category}/:
@@ -67,15 +80,36 @@ For each knowledge file in .claude/knowledge/{category}/:
 - Policy decisions (keep old pattern vs adopt new)
 - Major refactoring considerations
 
-## Output Format
+## Structured Output Schema
 
-For each auto-fix, describe what you fixed.
+You MUST respond with valid JSON matching this schema:
+
+{
+  "reviews": [
+    {
+      "id": "6-char alphanumeric id",
+      "subject": "brief subject for filename",
+      "type": "stale | conflict | outdated",
+      "question": "Human-readable question about the issue",
+      "context": "File paths, code snippets, relevant details",
+      "options": ["Option A description", "Option B description", ...],
+      "knowledge_file": "path to the affected knowledge file"
+    }
+  ],
+  "auto_fixed": ["Description of auto-fix 1", "Description of auto-fix 2", ...],
+  "done": true
+}
+
+## Output Guidelines
+
+For each auto-fix, describe what you fixed in the auto_fixed array.
 For each review, provide:
 - Clear question about the conflict
 - Context explaining the issue
 - 2-4 options for resolution
 
-Be thorough but efficient. Don't flag minor issues that don't affect usefulness.`;
+Be thorough but efficient. Don't flag minor issues that don't affect usefulness.
+Set done: true when you have completed your analysis.`;
 export function generateShortId() {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
     let id = '';

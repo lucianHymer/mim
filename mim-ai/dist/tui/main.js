@@ -224,6 +224,8 @@ class MimGame {
             wellspringSessionId: null,
             agentProcessing: false,
             agentDone: false,
+            otherInputActive: false,
+            otherInputText: '',
         };
         this.tracker = {
             lastTileFrame: -1,
@@ -701,13 +703,17 @@ class MimGame {
                 if (this.callbacks.onCharacterSelected) {
                     this.callbacks.onCharacterSelected(this.state.selectedCharacter);
                 }
-                this.transitionTo('BRIDGE_GUARDIAN');
+                this.transitionTo('BRIDGE_GUARDIAN').catch((err) => {
+                    logError(AGENTS.TUI, `Transition error: ${err.message}`);
+                });
                 break;
             case ' ': // Space bar - skip intro, go directly to Wellspring
                 if (this.callbacks.onCharacterSelected) {
                     this.callbacks.onCharacterSelected(this.state.selectedCharacter);
                 }
-                this.transitionTo('WELLSPRING');
+                this.transitionTo('WELLSPRING').catch((err) => {
+                    logError(AGENTS.TUI, `Transition error: ${err.message}`);
+                });
                 break;
             case 'q':
                 this.state.pendingExit = true;
@@ -717,6 +723,41 @@ class MimGame {
     }
     handleBridgeGuardianInput(key) {
         const review = this.getCurrentReview();
+        // Handle text input mode for "Other" option
+        if (this.state.otherInputActive) {
+            if (key === 'ENTER') {
+                // Submit the custom answer
+                if (this.state.otherInputText.trim().length > 0) {
+                    this.answerCurrentReview(`Other: ${this.state.otherInputText.trim()}`);
+                }
+                this.state.otherInputActive = false;
+                this.state.otherInputText = '';
+                this.fullDraw();
+                return;
+            }
+            else if (key === 'ESCAPE') {
+                // Cancel text input
+                this.state.otherInputActive = false;
+                this.state.otherInputText = '';
+                this.fullDraw();
+                return;
+            }
+            else if (key === 'BACKSPACE' || key === 'DELETE') {
+                // Delete last character
+                this.state.otherInputText = this.state.otherInputText.slice(0, -1);
+                this.fullDraw();
+                return;
+            }
+            else if (key.length === 1 && key.charCodeAt(0) >= 32) {
+                // Add printable character (limit to reasonable length)
+                if (this.state.otherInputText.length < 200) {
+                    this.state.otherInputText += key;
+                    this.fullDraw();
+                }
+                return;
+            }
+            return; // Ignore other keys in input mode
+        }
         switch (key) {
             case 'ENTER':
                 if (this.state.guardianAnswered) {
@@ -749,7 +790,12 @@ class MimGame {
                 break;
             case 'o':
             case 'O':
-                // TODO: Open text input for "Other" answer
+                // Activate text input mode
+                if (review) {
+                    this.state.otherInputActive = true;
+                    this.state.otherInputText = '';
+                    this.fullDraw(); // Redraw to show input field
+                }
                 break;
             case 'ESCAPE':
                 this.transitionTo('CHARACTER_SELECT');
@@ -978,19 +1024,34 @@ class MimGame {
                 }
                 y += 1;
             }
-            // Show options
-            for (let i = 0; i < review.options.length; i++) {
-                const letter = String.fromCharCode(65 + i); // A, B, C, D
-                const optionLines = this.wrapText(`[${letter}] ${review.options[i]}`, width);
-                for (const line of optionLines) {
-                    term.moveTo(x, y);
-                    process.stdout.write(`${COLORS.cyan}${line}${COLORS.reset}`);
-                    y += 1;
-                }
+            // Show text input or options
+            if (this.state.otherInputActive) {
+                // Show text input UI
+                term.moveTo(x, y);
+                process.stdout.write(`${COLORS.cyan}Type your answer (ENTER to submit, ESC to cancel):${COLORS.reset}`);
+                y += 1;
+                term.moveTo(x, y);
+                // Show input with cursor
+                const displayText = this.state.otherInputText.length > width - 3
+                    ? this.state.otherInputText.slice(-(width - 4))
+                    : this.state.otherInputText;
+                process.stdout.write(`> ${displayText}\u2588`);
             }
-            y += 1;
-            term.moveTo(x, y);
-            process.stdout.write(`${COLORS.dim}[O] Other (provide custom answer)${COLORS.reset}`);
+            else {
+                // Show options
+                for (let i = 0; i < review.options.length; i++) {
+                    const letter = String.fromCharCode(65 + i); // A, B, C, D
+                    const optionLines = this.wrapText(`[${letter}] ${review.options[i]}`, width);
+                    for (const line of optionLines) {
+                        term.moveTo(x, y);
+                        process.stdout.write(`${COLORS.cyan}${line}${COLORS.reset}`);
+                        y += 1;
+                    }
+                }
+                y += 1;
+                term.moveTo(x, y);
+                process.stdout.write(`${COLORS.dim}[O] Other (provide custom answer)${COLORS.reset}`);
+            }
         }
         else if (this.state.guardianAnswered) {
             term.moveTo(x, y);
@@ -1006,7 +1067,12 @@ class MimGame {
         // Instructions at bottom
         const instructionY = layout.chatArea.y + layout.chatArea.height - 2;
         term.moveTo(x, instructionY);
-        process.stdout.write(`${COLORS.dim}[A-D] Answer  [O] Other  [ESC] Back  [Ctrl+C] Quit${COLORS.reset}`);
+        if (this.state.otherInputActive) {
+            process.stdout.write(`${COLORS.dim}[ENTER] Submit  [ESC] Cancel  [Backspace] Delete${COLORS.reset}`);
+        }
+        else {
+            process.stdout.write(`${COLORS.dim}[A-D] Answer  [O] Other  [ESC] Back  [Ctrl+C] Quit${COLORS.reset}`);
+        }
     }
     /**
      * Wrap text to fit within a given width

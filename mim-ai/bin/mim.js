@@ -7,6 +7,7 @@ const KNOWLEDGE_DIR = '.claude/knowledge';
 const PENDING_DIR = path.join(KNOWLEDGE_DIR, 'pending-review');
 
 const KNOWLEDGE_SUBDIRS = [
+  'remember-queue',
   'pending-review',
   'architecture',
   'patterns',

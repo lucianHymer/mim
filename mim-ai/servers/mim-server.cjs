@@ -90,6 +90,13 @@ const QUEUE_PROCESSOR_SYSTEM_PROMPT = `You are the Knowledge Processor for Mim, 
 
 Your job is to process incoming knowledge entries and organize them into the appropriate files.
 
+## Available Tools
+
+You have access to: Read, Write, Edit, Glob, Grep, Bash
+You do NOT have access to: AskUserQuestion (you cannot ask the user anything)
+
+Use these tools to examine existing knowledge and write new entries.
+
 ## Knowledge Structure
 
 The knowledge base is organized into these directories under .claude/knowledge/:
@@ -114,17 +121,16 @@ When you receive a knowledge entry to process:
 
 ## Pending Review Format
 
-When conflicts are detected, write to .claude/knowledge/pending-review/{timestamp}-{id}.json:
+When conflicts are detected, write to .claude/knowledge/pending-review/{id}-{subject}.json:
 
 {
   "id": "short-id",
-  "category": "the-category",
+  "subject": "brief-subject-slug",
+  "type": "conflict",
   "question": "Human-readable question about the conflict",
-  "options": [
-    { "label": "A", "description": "First option" },
-    { "label": "B", "description": "Second option" }
-  ],
-  "context": "Details about what conflicted and where"
+  "options": ["First option", "Second option", "Third option", "Fourth option"],
+  "context": "Details about what conflicted and where",
+  "knowledge_file": "category/filename.md"
 }
 
 ## File Organization
@@ -135,11 +141,43 @@ When adding new knowledge:
 - Create new files for distinct topics
 - Use markdown formatting with headers
 
+## Structured Output
+
+Your response MUST be valid JSON with these exact fields:
+- status: "processed" or "conflict_detected"
+- action: "added", "updated", "duplicate_skipped", or "created_review"
+- file_modified: path to the file you modified, or null if none
+- ready_for_next: always set to true when done with this entry
+
+Example: {"status":"processed","action":"added","file_modified":"architecture/api.md","ready_for_next":true}
+
 ## Important
 
 - Be ruthless about avoiding duplicates - skip anything that's essentially the same
 - When in doubt about conflicts, create a review entry
-- Always signal ready_for_next: true when done processing an entry`;
+- Always signal ready_for_next: true when done processing an entry
+- If you encounter errors, still output valid JSON with ready_for_next: true
+
+## Output Schema (REQUIRED)
+
+You MUST always respond with this exact JSON structure:
+
+{
+  "status": "processed" | "conflict_detected",
+  "action": "added" | "updated" | "duplicate_skipped" | "created_review",
+  "file_modified": "/path/to/file.md" | null,
+  "ready_for_next": true | false
+}
+
+- status: Whether processing completed normally or found a conflict
+- action: What you did with the entry
+- file_modified: Path to the file you modified, or null if none
+- ready_for_next: Always set to true when done with the current entry
+
+## Tool Restrictions
+
+You have access to file tools (Read, Write, Edit, Grep, Glob) but NOT AskUserQuestion.
+When facing decisions, use your best judgment rather than asking.`;
 
 /**
  * Queue Processor Output Schema (JSON Schema format)
@@ -528,27 +566,37 @@ async function handleRemember(params) {
 
 const REMEMBER_TOOL = {
   name: 'remember',
-  description: `Capture a discovery or insight for the project's persistent knowledge base.
+  description: `Capture project discoveries and learnings for persistent documentation. Automatically preserves knowledge about architecture, patterns, workflows, dependencies, and unique behaviors.
 
-Use this tool to record:
-- Architecture decisions and patterns discovered
-- Gotchas and pitfalls encountered
-- Dependency information and quirks
-- Workflow optimizations and processes
-- Code patterns and conventions
+🎯 USE THIS TOOL when you:
+• Discover how something works in this project
+• Learn project-specific patterns or conventions
+• Find configuration details or requirements
+• Understand architecture or system design
+• Encounter non-obvious behaviors or gotchas
+• Figure out dependencies or integrations
+• Realize your assumptions were incorrect
 
-Knowledge is automatically deduplicated and organized. Conflicts are queued for review.`,
+💡 KEY TRIGGERS - phrases that signal discovery:
+"I learned that", "turns out", "actually it's", "I discovered", "for future reference", "good to know", "interesting that"
+
+⚡ ALWAYS CAPTURE project-specific knowledge immediately - this creates the persistent memory that survives context resets.
+
+✓ Examples: Database schema conventions, API authentication flows, build system quirks
+✗ Skip: Current bug fixes, temporary debug output, generic programming concepts
+
+Knowledge is automatically deduplicated and organized. Conflicts are queued for human review.`,
   inputSchema: {
     type: 'object',
     properties: {
       category: {
         type: 'string',
         enum: ['architecture', 'patterns', 'dependencies', 'workflows', 'gotchas'],
-        description: 'The category of knowledge: architecture (system design), patterns (code conventions), dependencies (external libs), workflows (processes), gotchas (pitfalls)'
+        description: 'Category: architecture (system design, data flow), patterns (code conventions, idioms), dependencies (external libs, versions), workflows (dev processes, deployment), gotchas (pitfalls, non-obvious behaviors)'
       },
       content: {
         type: 'string',
-        description: 'The knowledge to remember - be specific and include context'
+        description: 'Complete details of what you discovered. Include specifics, configuration values, file paths, and context that would help understand this knowledge later.'
       }
     },
     required: ['category', 'content']

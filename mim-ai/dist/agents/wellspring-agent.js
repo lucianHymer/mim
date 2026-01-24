@@ -70,7 +70,22 @@ When done with all reviews, output done: true.
 - Make precise, minimal edits
 - Don't rewrite entire files
 - Delete review files after processing each one successfully
-- If a knowledge file doesn't exist, skip that review`;
+- If a knowledge file doesn't exist, skip that review
+
+## Your Output
+
+Your structured output must be valid JSON matching this schema:
+
+{
+  "message": string,
+  "done": boolean
+}
+
+Field descriptions:
+- message: A status message to display to the user, written in your mystical Wellspring voice. Describe what you did (e.g., "The waters reflect your choice... The old API documentation sinks into the depths, replaced by the new flow.")
+- done: True when you have finished processing all answered review entries, false if there are more to process
+
+All fields are required. Be precise with your output format.`;
 // Helper to strip $schema from JSON schemas for compatibility
 function stripSchemaField(schema) {
     const { $schema, ...rest } = schema;
