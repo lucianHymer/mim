@@ -46,6 +46,13 @@ export declare const TILE: {
     readonly SCROLL: 124;
     readonly WATER: 70;
     readonly BRIDGE: 71;
+    readonly COBBLESTONE: 12;
+    readonly WAVY_WATER: 55;
+    readonly BRIDGE_H: 59;
+    readonly GUARDIAN: 199;
+    readonly ODIN: 209;
+    readonly MIM: 216;
+    readonly CHASM: 0;
 };
 export type QuarterPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
 export interface RGB {

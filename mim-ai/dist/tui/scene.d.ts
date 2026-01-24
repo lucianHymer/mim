@@ -14,17 +14,49 @@ export type TileSpec = number | {
     tile: number;
     mirrored: boolean;
 };
+/**
+ * Scene type for selecting different layouts
+ */
+export type SceneType = 'bridge-guardian' | 'wellspring' | 'default';
 export declare const SCENE_WIDTH = 7;
 export declare const SCENE_HEIGHT = 6;
 /**
- * Create a simple 7x6 grid of grass tiles
+ * Create the Bridge Guardian scene (7x6)
  *
- * This is a minimal scene for initial setup. It will be customized
- * later for the Bridge Guardian and Wellspring scenes.
+ * Layout:
+ * Row 0: TREE  TREE  CHASM CHASM CHASM COBBLE COBBLE
+ * Row 1: GRASS GRASS CHASM CHASM CHASM COBBLE COBBLE
+ * Row 2: TREE  (player) (guardian) BRIDGE BRIDGE COBBLE COBBLE  <-- middle row
+ * Row 3: GRASS GRASS CHASM CHASM CHASM COBBLE COBBLE
+ * Row 4: TREE  TREE  CHASM CHASM CHASM COBBLE COBBLE
+ * Row 5: GRASS TREE  CHASM CHASM CHASM COBBLE COBBLE
  *
- * @param _sprites - Array of Sprites (unused in minimal version)
+ * Note: Player position (2,1) and Guardian position (2,2) are set as grass/chasm,
+ * the actual sprites are overlaid during rendering.
  */
-export declare function createScene(_sprites: Sprite[]): TileSpec[][];
+export declare function createBridgeGuardianScene(): TileSpec[][];
+/**
+ * Create the Wellspring scene (7x6)
+ *
+ * Layout:
+ * Row 0: TREE   TREE   TREE   TREE   TREE   TREE   TREE
+ * Row 1: TREE   COBBLE COBBLE COBBLE COBBLE COBBLE (odin)
+ * Row 2: (enter) COBBLE WATER  WATER  WATER  COBBLE TREE
+ * Row 3: TREE   COBBLE WATER  (mim)  WATER  COBBLE TREE
+ * Row 4: TREE   COBBLE COBBLE (dest) COBBLE COBBLE TREE
+ * Row 5: TREE   TREE   TREE   TREE   TREE   TREE   TREE
+ *
+ * Note: Positions for sprites (odin at 1,6, enter at 2,0, mim at 3,3, dest at 4,3)
+ * use base tiles; sprites are overlaid during rendering.
+ */
+export declare function createWellspringScene(): TileSpec[][];
+/**
+ * Create a scene based on the specified type
+ *
+ * @param _sprites - Array of Sprites (unused, kept for API compatibility)
+ * @param sceneType - The type of scene to create (defaults to 'default')
+ */
+export declare function createScene(_sprites: Sprite[], sceneType?: SceneType): TileSpec[][];
 /**
  * Render the scene to an ANSI string
  *

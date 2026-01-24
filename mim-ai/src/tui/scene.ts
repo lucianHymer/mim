@@ -29,6 +29,11 @@ import {
  */
 export type TileSpec = number | { tile: number; mirrored: boolean };
 
+/**
+ * Scene type for selecting different layouts
+ */
+export type SceneType = 'bridge-guardian' | 'wellspring' | 'default';
+
 // ============================================================================
 // Constants
 // ============================================================================
@@ -46,6 +51,16 @@ function getGrassTile(row: number, col: number): number {
   const pattern = (row * 3 + col * 7) % 10;
   if (pattern < 3) return TILE.GRASS_SPARSE;
   return TILE.GRASS;
+}
+
+/**
+ * Get a varied tree tile based on position for natural look
+ * Returns mix of pine and bare trees
+ */
+function getTreeTile(row: number, col: number): number {
+  const pattern = (row * 5 + col * 3) % 10;
+  if (pattern < 3) return TILE.BARE_TREE;
+  return TILE.PINE_TREE;
 }
 
 // ============================================================================
@@ -97,14 +112,168 @@ function getTileRender(
 // ============================================================================
 
 /**
- * Create a simple 7x6 grid of grass tiles
+ * Create the Bridge Guardian scene (7x6)
  *
- * This is a minimal scene for initial setup. It will be customized
- * later for the Bridge Guardian and Wellspring scenes.
+ * Layout:
+ * Row 0: TREE  TREE  CHASM CHASM CHASM COBBLE COBBLE
+ * Row 1: GRASS GRASS CHASM CHASM CHASM COBBLE COBBLE
+ * Row 2: TREE  (player) (guardian) BRIDGE BRIDGE COBBLE COBBLE  <-- middle row
+ * Row 3: GRASS GRASS CHASM CHASM CHASM COBBLE COBBLE
+ * Row 4: TREE  TREE  CHASM CHASM CHASM COBBLE COBBLE
+ * Row 5: GRASS TREE  CHASM CHASM CHASM COBBLE COBBLE
+ *
+ * Note: Player position (2,1) and Guardian position (2,2) are set as grass/chasm,
+ * the actual sprites are overlaid during rendering.
+ */
+export function createBridgeGuardianScene(): TileSpec[][] {
+  const scene: TileSpec[][] = [];
+
+  for (let row = 0; row < SCENE_HEIGHT; row++) {
+    const sceneRow: TileSpec[] = [];
+    for (let col = 0; col < SCENE_WIDTH; col++) {
+      // Right side: Cobblestone (cols 5-6)
+      if (col >= 5) {
+        sceneRow.push(TILE.COBBLESTONE);
+      }
+      // Chasm area (cols 2-4), except bridge on row 2
+      else if (col >= 2 && col <= 4) {
+        if (row === 2 && col >= 3) {
+          // Bridge tiles on the middle row (cols 3-4)
+          sceneRow.push(TILE.BRIDGE_H);
+        } else if (row === 2 && col === 2) {
+          // Guardian position - use chasm as base (sprite will be overlaid)
+          sceneRow.push(TILE.CHASM);
+        } else {
+          sceneRow.push(TILE.CHASM);
+        }
+      }
+      // Left side: Trees and grass (cols 0-1)
+      else {
+        // Row 0: Trees
+        if (row === 0) {
+          sceneRow.push(getTreeTile(row, col));
+        }
+        // Row 1: Grass
+        else if (row === 1) {
+          sceneRow.push(getGrassTile(row, col));
+        }
+        // Row 2: Tree at col 0, grass at col 1 (player position)
+        else if (row === 2) {
+          if (col === 0) {
+            sceneRow.push(getTreeTile(row, col));
+          } else {
+            sceneRow.push(getGrassTile(row, col)); // Player position
+          }
+        }
+        // Row 3: Grass
+        else if (row === 3) {
+          sceneRow.push(getGrassTile(row, col));
+        }
+        // Row 4: Trees
+        else if (row === 4) {
+          sceneRow.push(getTreeTile(row, col));
+        }
+        // Row 5: Grass at col 0, Tree at col 1
+        else {
+          if (col === 0) {
+            sceneRow.push(getGrassTile(row, col));
+          } else {
+            sceneRow.push(getTreeTile(row, col));
+          }
+        }
+      }
+    }
+    scene.push(sceneRow);
+  }
+
+  return scene;
+}
+
+/**
+ * Create the Wellspring scene (7x6)
+ *
+ * Layout:
+ * Row 0: TREE   TREE   TREE   TREE   TREE   TREE   TREE
+ * Row 1: TREE   COBBLE COBBLE COBBLE COBBLE COBBLE (odin)
+ * Row 2: (enter) COBBLE WATER  WATER  WATER  COBBLE TREE
+ * Row 3: TREE   COBBLE WATER  (mim)  WATER  COBBLE TREE
+ * Row 4: TREE   COBBLE COBBLE (dest) COBBLE COBBLE TREE
+ * Row 5: TREE   TREE   TREE   TREE   TREE   TREE   TREE
+ *
+ * Note: Positions for sprites (odin at 1,6, enter at 2,0, mim at 3,3, dest at 4,3)
+ * use base tiles; sprites are overlaid during rendering.
+ */
+export function createWellspringScene(): TileSpec[][] {
+  const scene: TileSpec[][] = [];
+
+  for (let row = 0; row < SCENE_HEIGHT; row++) {
+    const sceneRow: TileSpec[] = [];
+    for (let col = 0; col < SCENE_WIDTH; col++) {
+      // Row 0: All trees
+      if (row === 0) {
+        sceneRow.push(getTreeTile(row, col));
+      }
+      // Row 1: Tree, Cobbles, Odin position (tree base for Odin at col 6)
+      else if (row === 1) {
+        if (col === 0) {
+          sceneRow.push(getTreeTile(row, col));
+        } else if (col === 6) {
+          // Odin position - use cobblestone as base
+          sceneRow.push(TILE.COBBLESTONE);
+        } else {
+          sceneRow.push(TILE.COBBLESTONE);
+        }
+      }
+      // Row 2: Enter position, Cobble, Water, Water, Water, Cobble, Tree
+      else if (row === 2) {
+        if (col === 0) {
+          // Enter position - use grass as base for player entry
+          sceneRow.push(getGrassTile(row, col));
+        } else if (col === 1 || col === 5) {
+          sceneRow.push(TILE.COBBLESTONE);
+        } else if (col >= 2 && col <= 4) {
+          sceneRow.push(TILE.WAVY_WATER);
+        } else {
+          sceneRow.push(getTreeTile(row, col));
+        }
+      }
+      // Row 3: Tree, Cobble, Water, Mim position (water), Water, Cobble, Tree
+      else if (row === 3) {
+        if (col === 0 || col === 6) {
+          sceneRow.push(getTreeTile(row, col));
+        } else if (col === 1 || col === 5) {
+          sceneRow.push(TILE.COBBLESTONE);
+        } else {
+          // Water tiles (cols 2-4), including Mim's position at col 3
+          sceneRow.push(TILE.WAVY_WATER);
+        }
+      }
+      // Row 4: Tree, Cobbles with dest position at col 3, Tree
+      else if (row === 4) {
+        if (col === 0 || col === 6) {
+          sceneRow.push(getTreeTile(row, col));
+        } else {
+          // Cobblestone path, including destination at col 3
+          sceneRow.push(TILE.COBBLESTONE);
+        }
+      }
+      // Row 5: All trees
+      else {
+        sceneRow.push(getTreeTile(row, col));
+      }
+    }
+    scene.push(sceneRow);
+  }
+
+  return scene;
+}
+
+/**
+ * Create a simple 7x6 grid of grass tiles (default scene)
  *
  * @param _sprites - Array of Sprites (unused in minimal version)
  */
-export function createScene(_sprites: Sprite[]): TileSpec[][] {
+function createDefaultScene(): TileSpec[][] {
   const scene: TileSpec[][] = [];
 
   for (let row = 0; row < SCENE_HEIGHT; row++) {
@@ -117,6 +286,24 @@ export function createScene(_sprites: Sprite[]): TileSpec[][] {
   }
 
   return scene;
+}
+
+/**
+ * Create a scene based on the specified type
+ *
+ * @param _sprites - Array of Sprites (unused, kept for API compatibility)
+ * @param sceneType - The type of scene to create (defaults to 'default')
+ */
+export function createScene(_sprites: Sprite[], sceneType?: SceneType): TileSpec[][] {
+  switch (sceneType) {
+    case 'bridge-guardian':
+      return createBridgeGuardianScene();
+    case 'wellspring':
+      return createWellspringScene();
+    case 'default':
+    default:
+      return createDefaultScene();
+  }
 }
 
 // ============================================================================

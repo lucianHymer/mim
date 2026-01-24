@@ -8,5 +8,11 @@
       "command": "node",
       "args": ["${pluginRoot}/servers/mim-server.cjs"]
     }
+  },
+  "hooks": {
+    "sessionStart": {
+      "command": "node",
+      "args": ["${pluginRoot}/hooks/session-start.js"]
+    }
   }
 }

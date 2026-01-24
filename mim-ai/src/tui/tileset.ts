@@ -66,6 +66,13 @@ export const TILE = {
   // Mím-specific tiles
   WATER: 70, // Water tile for the Wellspring
   BRIDGE: 71, // Bridge tile
+  COBBLESTONE: 12,
+  WAVY_WATER: 55, // For Wellspring pool
+  BRIDGE_H: 59, // Horizontal bridge piece
+  GUARDIAN: 199, // Bridge guardian (cloaked figure)
+  ODIN: 209, // Odin watching at Wellspring
+  MIM: 216, // Mim's head in the water
+  CHASM: 0, // Dark/empty tile for the chasm
 } as const;
 
 // ============================================================================
