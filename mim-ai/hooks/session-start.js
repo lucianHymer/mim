@@ -7,13 +7,30 @@
  * If HEAD has changed since last analysis, notifies the user.
  */
 
-import { execSync } from 'node:child_process';
+import { execSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
 
 const KNOWLEDGE_DIR = '.claude/knowledge';
 const LAST_ANALYSIS_FILE = path.join(KNOWLEDGE_DIR, '.last-analysis');
 const PENDING_DIR = path.join(KNOWLEDGE_DIR, 'pending-review');
+
+function spawnBackgroundAnalysis() {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+  const analysisScript = path.join(__dirname, 'run-analysis.js');
+
+  // Spawn detached so it doesn't block the session
+  const child = spawn('node', [analysisScript], {
+    detached: true,
+    stdio: 'ignore',
+    cwd: process.cwd()
+  });
+
+  child.unref(); // Allow parent to exit independently
+}
 
 function getCurrentHead() {
   try {
@@ -71,12 +88,16 @@ async function main() {
     return;
   }
 
-  // HEAD has changed - analysis may be needed
-  // Note: We don't run the full analysis here (too slow for a hook)
-  // Just notify the user
+  // HEAD has changed - spawn background analysis
   if (lastAnalysis) {
     console.log('\n📜 The codebase has changed since last analysis.');
-    console.log('   Consider running knowledge analysis to keep the Wellspring pure.\n');
+    console.log('   Mím is analyzing in the background...\n');
+    spawnBackgroundAnalysis();
+  } else {
+    // First time - also spawn analysis
+    console.log('\n📜 First time seeing this codebase.');
+    console.log('   Mím is analyzing in the background...\n');
+    spawnBackgroundAnalysis();
   }
 
   if (pendingCount > 0) {

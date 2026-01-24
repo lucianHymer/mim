@@ -11,6 +11,9 @@
 import termKit from 'terminal-kit';
 import fs from 'node:fs';
 import path from 'node:path';
+import { query } from '@anthropic-ai/claude-agent-sdk';
+import { logInfo, logWarn, logError, AGENTS } from '../utils/logger.js';
+import { WELLSPRING_SYSTEM_PROMPT, getWellspringOutputJsonSchema, loadAnsweredReviews, deleteReviewFile } from '../agents/wellspring-agent.js';
 import { getAllSprites, hasActiveAnimations, registerSprite, startAnimationLoop, stopAnimationLoop, unregisterSprite, } from './animation-loop.js';
 import { createScene, renderScene, SCENE_HEIGHT, SCENE_WIDTH, } from './scene.js';
 import { Sprite } from './sprite.js';
@@ -218,6 +221,9 @@ class MimGame {
             lastSelectionIndex: -1,
             messages: [],
             guardianAnswered: false,
+            wellspringSessionId: null,
+            agentProcessing: false,
+            agentDone: false,
         };
         this.tracker = {
             lastTileFrame: -1,
@@ -545,10 +551,119 @@ class MimGame {
         // Auto-walk to destination position (4, 3)
         await this.humanSprite.walk({ row: 4, col: 3 });
         this.drawScene();
-        // Signal Wellspring agent to start
+        // Start Agent 3 to process answered reviews
+        this.runWellspringAgent();
+        // Also notify via callback if provided
         if (this.callbacks.onWellspringStart) {
             this.callbacks.onWellspringStart();
         }
+    }
+    /**
+     * Run Agent 3 (Wellspring) to apply user decisions
+     */
+    async runWellspringAgent() {
+        const AGENT = AGENTS.WELLSPRING;
+        logInfo(AGENT, 'Starting Wellspring agent');
+        // Load answered reviews
+        const reviews = loadAnsweredReviews();
+        if (reviews.length === 0) {
+            logInfo(AGENT, 'No answered reviews to process');
+            this.addMessage('wellspring', 'The waters are still. No decisions await.');
+            this.state.agentDone = true;
+            this.draw();
+            return;
+        }
+        logInfo(AGENT, `Processing ${reviews.length} answered reviews`);
+        this.state.agentProcessing = true;
+        this.draw();
+        // Build prompt with all answered reviews
+        const reviewsText = reviews.map(r => `Review ${r.id}:
+      Question: ${r.question}
+      Answer: ${r.answer}
+      Knowledge file: ${r.knowledge_file}
+      Type: ${r.type}`).join('\n\n');
+        const prompt = `Apply these user decisions to the knowledge base:\n\n${reviewsText}`;
+        try {
+            const session = query({
+                prompt,
+                options: {
+                    model: 'opus',
+                    systemPrompt: WELLSPRING_SYSTEM_PROMPT,
+                    canUseTool: async (tool, input) => {
+                        if (tool === 'AskUserQuestion') {
+                            return { behavior: 'deny', message: 'Apply the user decision directly' };
+                        }
+                        // Log tool usage
+                        logInfo(AGENT, `Using tool: ${tool}`);
+                        this.addMessage('wellspring', `[Using ${tool}...]`);
+                        return { behavior: 'allow', updatedInput: input };
+                    },
+                    outputFormat: {
+                        type: 'json_schema',
+                        schema: getWellspringOutputJsonSchema()
+                    }
+                }
+            });
+            for await (const event of session) {
+                if (event.type === 'system' && event.subtype === 'init') {
+                    this.state.wellspringSessionId = event.session_id;
+                    logInfo(AGENT, `Session started: ${event.session_id}`);
+                }
+                if (event.type === 'assistant') {
+                    // Stream assistant text to chat
+                    // The content is nested inside event.message.content
+                    const message = event.message;
+                    if (message && message.content) {
+                        for (const block of message.content) {
+                            if (block.type === 'text' && block.text) {
+                                this.addMessage('wellspring', block.text);
+                            }
+                        }
+                    }
+                }
+                if (event.type === 'result') {
+                    if (event.subtype === 'success') {
+                        const output = event.structured_output;
+                        if (output) {
+                            if (output.message) {
+                                this.addMessage('wellspring', output.message);
+                            }
+                            if (output.done) {
+                                logInfo(AGENT, 'Agent signaled done');
+                                this.state.agentDone = true;
+                                // Clean up processed review files
+                                for (const review of reviews) {
+                                    try {
+                                        deleteReviewFile(review);
+                                        logInfo(AGENT, `Deleted review file: ${review.id}`);
+                                    }
+                                    catch (err) {
+                                        logWarn(AGENT, `Failed to delete review file ${review.id}: ${err}`);
+                                    }
+                                }
+                                this.addMessage('wellspring', 'The Wellspring rests. Press ESC to depart.');
+                            }
+                        }
+                    }
+                    else {
+                        // Error subtypes: error_during_execution, error_max_turns, error_max_budget_usd, error_max_structured_output_retries
+                        const errors = event.errors || [];
+                        logError(AGENT, `Agent error: ${event.subtype} - ${errors.join(', ')}`);
+                        this.addMessage('wellspring', 'The waters grow turbulent... An error occurred.');
+                    }
+                }
+            }
+        }
+        catch (err) {
+            const error = err;
+            logError(AGENT, `Wellspring agent failed: ${error.message}`);
+            this.addMessage('wellspring', `Error: ${error.message}`);
+        }
+        finally {
+            this.state.agentProcessing = false;
+            this.draw();
+        }
+        logInfo(AGENT, 'Wellspring agent completed');
     }
     // ============================================================================
     // Private Methods - Input Handling
@@ -642,15 +757,15 @@ class MimGame {
         }
     }
     handleWellspringInput(key) {
-        // Wellspring scene is mostly read-only (watching agent work)
-        // Only allow exit when complete
         switch (key) {
             case 'ESCAPE':
-                // Exit game
-                if (this.callbacks.onComplete) {
-                    this.callbacks.onComplete();
+                // Only allow exit when agent is done
+                if (this.state.agentDone) {
+                    if (this.callbacks.onComplete) {
+                        this.callbacks.onComplete();
+                    }
+                    this.stop();
                 }
-                this.stop();
                 break;
         }
     }
@@ -945,9 +1060,18 @@ class MimGame {
         term.moveTo(x, y);
         process.stdout.write(`${COLORS.dim}${COLORS.italic}Your decisions ripple through the depths.${COLORS.reset}`);
         y += 2;
-        // Status
+        // Status based on agent state
         term.moveTo(x, y);
-        process.stdout.write('Applying your decisions to the knowledge base...');
+        if (this.state.agentDone) {
+            process.stdout.write(`${COLORS.green}All decisions have been applied.${COLORS.reset}`);
+        }
+        else if (this.state.agentProcessing) {
+            const dots = '.'.repeat((this.state.blinkCycle % 4) + 1);
+            process.stdout.write(`${COLORS.cyan}Applying decisions${dots}${COLORS.reset}`);
+        }
+        else {
+            process.stdout.write('Preparing to apply decisions...');
+        }
         y += 2;
         // Display messages
         if (this.state.messages.length > 0) {
@@ -963,8 +1087,8 @@ class MimGame {
                 y += 1;
             }
         }
-        else {
-            // Animated processing indicator
+        else if (!this.state.agentDone && !this.state.agentProcessing) {
+            // Animated processing indicator when waiting to start
             const dots = '.'.repeat((this.state.blinkCycle % 4) + 1);
             term.moveTo(x, y);
             process.stdout.write(`${COLORS.dim}Processing${dots}${COLORS.reset}`);
@@ -973,7 +1097,12 @@ class MimGame {
         // Instructions at bottom
         const instructionY = layout.chatArea.y + layout.chatArea.height - 2;
         term.moveTo(x, instructionY);
-        process.stdout.write(`${COLORS.dim}[ESC] Exit when complete  [Ctrl+C] Quit${COLORS.reset}`);
+        if (this.state.agentDone) {
+            process.stdout.write(`${COLORS.green}[ESC] Depart the Wellspring${COLORS.reset}`);
+        }
+        else {
+            process.stdout.write(`${COLORS.dim}Watching the Wellspring work...  [Ctrl+C] Quit${COLORS.reset}`);
+        }
     }
     drawExitConfirmation() {
         const layout = getLayout();

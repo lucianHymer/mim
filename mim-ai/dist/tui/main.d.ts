@@ -74,6 +74,10 @@ declare class MimGame {
     private answerCurrentReview;
     private setupBridgeGuardianScene;
     private setupWellspringScene;
+    /**
+     * Run Agent 3 (Wellspring) to apply user decisions
+     */
+    private runWellspringAgent;
     private handleCharacterSelectInput;
     private handleBridgeGuardianInput;
     private handleWellspringInput;

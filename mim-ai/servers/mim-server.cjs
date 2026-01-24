@@ -13,6 +13,7 @@
 const readline = require('readline');
 const fs = require('fs');
 const path = require('path');
+const { logInfo, logWarn, logError, AGENTS } = require('../src/utils/logger.cjs');
 
 // ============================================
 // Configuration
@@ -191,8 +192,9 @@ class QueueProcessor {
       // Dynamic import of ESM module in CommonJS
       const sdk = await import('@anthropic-ai/claude-agent-sdk');
       this.query = sdk.query;
+      logInfo(AGENTS.QUEUE_PROCESSOR, 'Claude Agent SDK imported successfully');
     } catch (err) {
-      console.error('Failed to import Claude Agent SDK:', err.message);
+      logError(AGENTS.QUEUE_PROCESSOR, `Failed to import Claude Agent SDK: ${err.message}`);
       throw err;
     }
   }
@@ -228,6 +230,8 @@ class QueueProcessor {
     if (this.session && this.sessionId) {
       return this.session;
     }
+
+    logInfo(AGENTS.QUEUE_PROCESSOR, 'Starting new agent session');
 
     // Load existing knowledge for context
     const knowledge = await this.loadAllKnowledge();
@@ -269,6 +273,7 @@ Reply with your structured output indicating ready_for_next: true when you're re
     for await (const message of this.session) {
       if (message.type === 'system' && message.subtype === 'init') {
         this.sessionId = message.session_id;
+        logInfo(AGENTS.QUEUE_PROCESSOR, `Session started with ID ${this.sessionId}`);
       }
       if (message.type === 'result' && message.subtype === 'success') {
         // Initial response complete
@@ -282,7 +287,7 @@ Reply with your structured output indicating ready_for_next: true when you're re
   /**
    * Send a message to the agent and get structured response
    */
-  async sendToAgent(message) {
+  async sendToAgent(message, isRetry = false) {
     await this.initSDK();
 
     const options = {
@@ -304,26 +309,40 @@ Reply with your structured output indicating ready_for_next: true when you're re
       }
     };
 
-    const session = this.query({ prompt: message, options });
-    let structuredOutput = null;
+    try {
+      const session = this.query({ prompt: message, options });
+      let structuredOutput = null;
 
-    for await (const msg of session) {
-      if (msg.type === 'result' && msg.subtype === 'success') {
-        structuredOutput = msg.structured_output;
+      for await (const msg of session) {
+        if (msg.type === 'result' && msg.subtype === 'success') {
+          structuredOutput = msg.structured_output;
+        }
       }
-    }
 
-    return structuredOutput;
+      return structuredOutput;
+    } catch (err) {
+      // Check for context exhaustion
+      if (err.message && err.message.toLowerCase().includes('context') && !isRetry) {
+        logWarn(AGENTS.QUEUE_PROCESSOR, 'Context exhaustion detected, resetting session');
+        this.resetSession();
+        // Retry once with fresh session
+        return this.sendToAgent(message, true);
+      }
+      throw err;
+    }
   }
 
   /**
    * Process a single queue entry
    */
-  async processEntry(entry) {
-    // Ensure session is started
-    await this.getSession();
+  async processEntry(entry, isRetry = false) {
+    logInfo(AGENTS.QUEUE_PROCESSOR, `Processing queue entry ${entry.id} [${entry.entry.category}]`);
 
-    const prompt = `Process this knowledge entry:
+    try {
+      // Ensure session is started
+      await this.getSession();
+
+      const prompt = `Process this knowledge entry:
 
 Category: ${entry.entry.category}
 Content: ${entry.entry.content}
@@ -333,14 +352,29 @@ ID: ${entry.id}
 
 Analyze this against existing knowledge and take the appropriate action.`;
 
-    const result = await this.sendToAgent(prompt);
+      const result = await this.sendToAgent(prompt);
 
-    return result || {
-      status: 'processed',
-      action: 'added',
-      file_modified: null,
-      ready_for_next: true
-    };
+      if (result) {
+        logInfo(AGENTS.QUEUE_PROCESSOR, `Entry ${entry.id} processed: ${result.action}${result.file_modified ? ` -> ${result.file_modified}` : ''}`);
+      }
+
+      return result || {
+        status: 'processed',
+        action: 'added',
+        file_modified: null,
+        ready_for_next: true
+      };
+    } catch (err) {
+      // Check for context exhaustion
+      if (err.message && err.message.toLowerCase().includes('context') && !isRetry) {
+        logWarn(AGENTS.QUEUE_PROCESSOR, 'Context exhaustion detected in processEntry, resetting session');
+        this.resetSession();
+        // Retry once with fresh session
+        return this.processEntry(entry, true);
+      }
+      logError(AGENTS.QUEUE_PROCESSOR, `Error processing entry ${entry.id}: ${err.message}`);
+      throw err;
+    }
   }
 
   /**
@@ -360,6 +394,13 @@ Analyze this against existing knowledge and take the appropriate action.`;
       const files = fs.readdirSync(queueDir)
         .filter(f => f.endsWith('.json'))
         .sort(); // Sort by timestamp (filename starts with timestamp)
+
+      if (files.length === 0) {
+        this.isProcessing = false;
+        return;
+      }
+
+      logInfo(AGENTS.QUEUE_PROCESSOR, `Starting queue processing: ${files.length} entries`);
 
       for (const file of files) {
         const filePath = path.join(queueDir, file);
@@ -385,10 +426,11 @@ Analyze this against existing knowledge and take the appropriate action.`;
             entry.status = 'pending';
             entry.lastError = 'Agent not ready for next';
             fs.writeFileSync(filePath, JSON.stringify(entry, null, 2));
+            logWarn(AGENTS.QUEUE_PROCESSOR, `Entry ${entry.id} marked for retry: agent not ready`);
           }
         } catch (err) {
           // Log error but continue processing queue
-          console.error(`Error processing queue entry ${file}:`, err.message);
+          logError(AGENTS.QUEUE_PROCESSOR, `Error processing queue entry ${file}: ${err.message}`);
 
           // Reset status to pending for retry
           try {
@@ -402,6 +444,8 @@ Analyze this against existing knowledge and take the appropriate action.`;
           }
         }
       }
+
+      logInfo(AGENTS.QUEUE_PROCESSOR, 'Queue processing completed');
     } finally {
       this.isProcessing = false;
     }
@@ -411,6 +455,7 @@ Analyze this against existing knowledge and take the appropriate action.`;
    * Reset the session (called on context exhaustion)
    */
   resetSession() {
+    logInfo(AGENTS.QUEUE_PROCESSOR, `Resetting session${this.sessionId ? ` (previous ID: ${this.sessionId})` : ''}`);
     this.session = null;
     this.sessionId = null;
   }
@@ -459,6 +504,8 @@ async function handleRemember(params) {
   const filepath = path.join(queueDir, filename);
   fs.writeFileSync(filepath, JSON.stringify(entry, null, 2));
 
+  logInfo(AGENTS.MCP_SERVER, `Entry queued: ${id} [${category}]`);
+
   // Initialize queue processor if needed
   if (!queueProcessor) {
     queueProcessor = new QueueProcessor(projectRoot);
@@ -467,7 +514,7 @@ async function handleRemember(params) {
   // Trigger async processing (non-blocking)
   setImmediate(() => {
     queueProcessor.processQueue().catch(err => {
-      console.error('Queue processing error:', err.message);
+      logError(AGENTS.MCP_SERVER, `Queue processing error: ${err.message}`);
     });
   });
 
