@@ -568,16 +568,19 @@ class MimGame {
                 this.suspendProcess();
                 return;
             }
-            // Global audio controls
-            if (key === 'm' || key === 'M') {
-                cycleMusicMode();
-                this.fullDraw();
-                return;
-            }
-            if (key === 's' || key === 'S') {
-                toggleSfx();
-                this.fullDraw();
-                return;
+            // Global audio controls (skip if in text input mode)
+            const inTextInput = this.state.textInputMode || this.state.otherInputActive;
+            if (!inTextInput) {
+                if (key === 'm' || key === 'M') {
+                    cycleMusicMode();
+                    this.fullDraw();
+                    return;
+                }
+                if (key === 's' || key === 'S') {
+                    toggleSfx();
+                    this.fullDraw();
+                    return;
+                }
             }
             // Screen-specific input handling
             switch (this.state.currentScreen) {
@@ -821,10 +824,10 @@ class MimGame {
         // Player shows alert/surprised reaction
         this.humanSprite.intrigued(800); // Don't await - let it run while we continue
         this.drawBridgeGuardianScene();
-        // Pause to see the alert before showing question
+        // Pause to see the alert before showing intro dialogue
         await this.delay(500);
-        // Now show the question modal
-        this.state.bridgeGuardianPhase = 'modal';
+        // Show the guardian's intro dialogue
+        this.state.bridgeGuardianPhase = 'intro';
         this.state.showQuestionModal = true;
         this.fullDraw();
     }
@@ -1288,7 +1291,12 @@ class MimGame {
         }
         switch (key) {
             case 'ENTER':
-                if (this.state.guardianAnswered) {
+                if (this.state.bridgeGuardianPhase === 'intro') {
+                    // Advance from intro to first question
+                    this.state.bridgeGuardianPhase = 'modal';
+                    this.fullDraw();
+                }
+                else if (this.state.guardianAnswered) {
                     this.crossBridge();
                 }
                 break;
@@ -2072,7 +2080,22 @@ class MimGame {
         const textBgColor = `\x1b[48;2;${bgSamplePixel.r};${bgSamplePixel.g};${bgSamplePixel.b}m`;
         // Build text content based on current state
         const textLines = [];
-        if (review) {
+        // Show intro dialogue before questions
+        if (this.state.bridgeGuardianPhase === 'intro') {
+            textLines.push('');
+            textLines.push(`${COLORS.yellow}"Before the other side of this bridge you see,${RESET}`);
+            textLines.push(`${COLORS.yellow}must first you answer my questions three."${RESET}`);
+            // If not exactly 3 questions, add the correction
+            const count = this.pendingReviews.length;
+            if (count !== 3) {
+                textLines.push('');
+                textLines.push(`${COLORS.dim}"Ermm... ${count}. *ahem*"${RESET}`);
+            }
+            textLines.push('');
+            textLines.push('');
+            textLines.push(`${COLORS.dim}Press ENTER to continue...${RESET}`);
+        }
+        else if (review) {
             // Progress indicator
             textLines.push(`${COLORS.dim}Question ${this.currentReviewIndex + 1} of ${this.pendingReviews.length}${RESET}`);
             textLines.push('');
