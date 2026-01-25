@@ -1,0 +1,21 @@
+{
+  "name": "mim-marketplace",
+  "owner": {
+    "name": "Lucian Hymer",
+    "email": "lucian@example.com"
+  },
+  "metadata": {
+    "description": "Persistent memory plugins for Claude Code",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "mim-ai",
+      "source": "./mim-ai",
+      "description": "Persistent memory for Claude Code - never forget what you learn",
+      "version": "2.0.0",
+      "keywords": ["memory", "knowledge", "persistence", "mcp"],
+      "category": "productivity"
+    }
+  ]
+}

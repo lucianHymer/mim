@@ -1,18 +1,18 @@
 {
   "name": "mim-ai",
-  "displayName": "Mim - Persistent Memory",
-  "description": "Knowledge persistence system for Claude Code",
   "version": "2.0.0",
+  "description": "Persistent memory for Claude Code - never forget what you learn",
+  "author": {
+    "name": "Lucian Hymer"
+  },
+  "repository": "https://github.com/lucianHymer/mim",
+  "license": "MIT",
+  "keywords": ["memory", "knowledge", "persistence", "mcp"],
   "mcpServers": {
     "mim": {
       "command": "node",
-      "args": ["${pluginRoot}/servers/mim-server.cjs"]
+      "args": ["${CLAUDE_PLUGIN_ROOT}/servers/mim-server.cjs"]
     }
   },
-  "hooks": {
-    "sessionStart": {
-      "command": "node",
-      "args": ["${pluginRoot}/hooks/session-start.js"]
-    }
-  }
+  "hooks": "./hooks/hooks.json"
 }
