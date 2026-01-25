@@ -10,10 +10,148 @@
  * 2. Hosts Agent 1 (Queue Processor) that processes entries
  */
 
-const readline = require('readline');
-const fs = require('fs');
-const path = require('path');
-const { logInfo, logWarn, logError, AGENTS } = require('../src/utils/logger.cjs');
+import * as readline from 'node:readline';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { execSync } from 'node:child_process';
+import { homedir } from 'node:os';
+import { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
+import { logInfo, logWarn, logError, AGENTS } from '../utils/logger.js';
+
+// ============================================
+// Type Definitions
+// ============================================
+
+/**
+ * JSON-RPC 2.0 Request
+ */
+interface JsonRpcRequest {
+  jsonrpc: '2.0';
+  id?: string | number | null;
+  method: string;
+  params?: Record<string, unknown>;
+}
+
+/**
+ * JSON-RPC 2.0 Response
+ */
+interface JsonRpcResponse {
+  jsonrpc: '2.0';
+  id: string | number | null;
+  result?: unknown;
+  error?: {
+    code: number;
+    message: string;
+  };
+}
+
+/**
+ * MCP Tool Definition
+ */
+interface McpToolDefinition {
+  name: string;
+  description: string;
+  inputSchema: {
+    type: 'object';
+    properties: Record<string, unknown>;
+    required: string[];
+  };
+}
+
+/**
+ * MCP Tool Call Parameters
+ */
+interface McpToolCallParams {
+  name: string;
+  arguments?: Record<string, unknown>;
+}
+
+/**
+ * Remember Tool Input Parameters
+ */
+interface RememberToolParams {
+  category: string;
+  topic: string;
+  details: string;
+  files?: string;
+}
+
+/**
+ * Queue Entry Content (the actual knowledge entry)
+ */
+interface QueueEntryContent {
+  category: string;
+  topic: string;
+  details: string;
+  files: string | null;
+  // Note: 'content' is accessed in processEntry but not set in handleRemember
+  // This preserves the original behavior (undefined at runtime)
+  content?: string;
+}
+
+/**
+ * Queue Entry (full structure stored on disk)
+ */
+interface QueueEntry {
+  id: string;
+  timestamp: number;
+  status: 'pending' | 'processing';
+  entry: QueueEntryContent;
+  lastError?: string;
+  processingStartedAt?: number;
+}
+
+/**
+ * Queue Processor Output Schema (Zod)
+ */
+const QueueProcessorOutputSchema = z.object({
+  status: z.enum(['processed', 'conflict_detected']),
+  action: z.enum(['added', 'updated', 'duplicate_skipped', 'created_review']),
+  file_modified: z.string().nullable(),
+  ready_for_next: z.boolean(),
+});
+
+type QueueProcessorOutput = z.infer<typeof QueueProcessorOutputSchema>;
+
+/**
+ * Claude Agent SDK Query Function Type
+ */
+type QueryFunction = (params: { prompt: string; options: QueryOptions }) => AsyncIterable<AgentMessage>;
+
+/**
+ * Query Options for Claude Agent SDK
+ */
+interface QueryOptions {
+  model: string;
+  systemPrompt: string;
+  canUseTool?: (toolName: string, input: unknown) => Promise<CanUseToolResult>;
+  outputFormat?: {
+    type: 'json_schema';
+    schema: Record<string, unknown>;
+  };
+  pathToClaudeCodeExecutable?: string;
+  resume?: string | null;
+}
+
+/**
+ * Can Use Tool Result
+ */
+interface CanUseToolResult {
+  behavior: 'allow' | 'deny';
+  message?: string;
+  updatedInput?: unknown;
+}
+
+/**
+ * Agent Message from Claude Agent SDK
+ */
+interface AgentMessage {
+  type: 'system' | 'result' | string;
+  subtype?: 'init' | 'success' | string;
+  session_id?: string;
+  structured_output?: QueueProcessorOutput;
+}
 
 // ============================================
 // Configuration
@@ -29,7 +167,7 @@ const CORE_CATEGORIES = ['architecture', 'patterns', 'dependencies', 'workflows'
 // JSON-RPC Helpers
 // ============================================
 
-function createResponse(id, result) {
+function createResponse(id: string | number | null, result: unknown): string {
   return JSON.stringify({
     jsonrpc: '2.0',
     id,
@@ -37,7 +175,7 @@ function createResponse(id, result) {
   });
 }
 
-function createError(id, code, message) {
+function createError(id: string | number | null, code: number, message: string): string {
   return JSON.stringify({
     jsonrpc: '2.0',
     id,
@@ -49,7 +187,7 @@ function createError(id, code, message) {
 // Short ID Generator
 // ============================================
 
-function generateShortId() {
+function generateShortId(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
   let id = '';
   for (let i = 0; i < 6; i++) {
@@ -62,13 +200,13 @@ function generateShortId() {
 // File System Helpers
 // ============================================
 
-function ensureDir(dirPath) {
+function ensureDir(dirPath: string): void {
   if (!fs.existsSync(dirPath)) {
     fs.mkdirSync(dirPath, { recursive: true });
   }
 }
 
-function getProjectRoot() {
+function getProjectRoot(): string {
   // Try to find project root by looking for .git directory
   let dir = process.cwd();
   while (dir !== '/') {
@@ -80,10 +218,35 @@ function getProjectRoot() {
   return process.cwd();
 }
 
-function findClaudeExecutable() {
-  // Check common locations for claude executable
-  const { execSync } = require('child_process');
+function recoverStaleQueueEntries(projectRoot: string): void {
+  const queueDir = path.join(projectRoot, '.claude/knowledge/remember-queue');
+  if (!fs.existsSync(queueDir)) return;
 
+  const files = fs.readdirSync(queueDir).filter(f => f.endsWith('.json'));
+  const staleThreshold = 5 * 60 * 1000; // 5 minutes
+
+  for (const file of files) {
+    const filePath = path.join(queueDir, file);
+    try {
+      const entry = JSON.parse(fs.readFileSync(filePath, 'utf8')) as QueueEntry;
+
+      if (entry.status === 'processing') {
+        const processingTime = entry.processingStartedAt || 0;
+        if (Date.now() - processingTime > staleThreshold) {
+          entry.status = 'pending';
+          entry.lastError = 'Recovered from stale processing state';
+          delete entry.processingStartedAt;
+          fs.writeFileSync(filePath, JSON.stringify(entry, null, 2));
+          logInfo(AGENTS.MCP_SERVER, `Recovered stale queue entry: ${entry.id}`);
+        }
+      }
+    } catch (e) {
+      // Skip corrupted files
+    }
+  }
+}
+
+function findClaudeExecutable(): string {
   try {
     // Try 'which claude' first
     const result = execSync('which claude', { encoding: 'utf8' }).trim();
@@ -96,9 +259,9 @@ function findClaudeExecutable() {
   }
 
   // Common installation paths
-  const homedir = require('os').homedir();
+  const home = homedir();
   const commonPaths = [
-    path.join(homedir, '.local', 'bin', 'claude'),
+    path.join(home, '.local', 'bin', 'claude'),
     '/usr/local/bin/claude',
     '/usr/bin/claude',
   ];
@@ -246,7 +409,7 @@ When facing decisions, use your best judgment rather than asking.`;
 /**
  * Queue Processor Output Schema (JSON Schema format)
  */
-const QUEUE_PROCESSOR_OUTPUT_SCHEMA = {
+const QUEUE_PROCESSOR_OUTPUT_SCHEMA: Record<string, unknown> = {
   type: 'object',
   properties: {
     status: {
@@ -276,27 +439,33 @@ const QUEUE_PROCESSOR_OUTPUT_SCHEMA = {
  * QueueProcessor class - manages Agent 1 lifecycle
  */
 class QueueProcessor {
-  constructor(projectRoot) {
+  private projectRoot: string;
+  private session: AsyncIterable<AgentMessage> | null;
+  private sessionId: string | null;
+  private isProcessing: boolean;
+  private query: QueryFunction | null;
+
+  constructor(projectRoot: string) {
     this.projectRoot = projectRoot;
     this.session = null;
     this.sessionId = null;
     this.isProcessing = false;
-    this.query = null; // Will be dynamically imported
+    this.query = null;
   }
 
   /**
    * Initialize the SDK (dynamic import for ESM in CJS)
    */
-  async initSDK() {
+  async initSDK(): Promise<void> {
     if (this.query) return;
 
     try {
       // Dynamic import of ESM module in CommonJS
       const sdk = await import('@anthropic-ai/claude-agent-sdk');
-      this.query = sdk.query;
+      this.query = sdk.query as QueryFunction;
       logInfo(AGENTS.QUEUE_PROCESSOR, 'Claude Agent SDK imported successfully');
     } catch (err) {
-      logError(AGENTS.QUEUE_PROCESSOR, `Failed to import Claude Agent SDK: ${err.message}`);
+      logError(AGENTS.QUEUE_PROCESSOR, `Failed to import Claude Agent SDK: ${(err as Error).message}`);
       throw err;
     }
   }
@@ -304,11 +473,11 @@ class QueueProcessor {
   /**
    * Load all existing knowledge for context
    */
-  async loadAllKnowledge() {
+  async loadAllKnowledge(): Promise<string> {
     const knowledgeDir = path.join(this.projectRoot, KNOWLEDGE_BASE_DIR);
     let content = '';
 
-    for (const category of CATEGORIES) {
+    for (const category of CORE_CATEGORIES) {
       const categoryDir = path.join(knowledgeDir, category);
       if (!fs.existsSync(categoryDir)) continue;
 
@@ -326,7 +495,7 @@ class QueueProcessor {
   /**
    * Start or get the agent session
    */
-  async getSession() {
+  async getSession(): Promise<AsyncIterable<AgentMessage>> {
     await this.initSDK();
 
     if (this.session && this.sessionId) {
@@ -339,7 +508,7 @@ class QueueProcessor {
     const knowledge = await this.loadAllKnowledge();
 
     // Create canUseTool function to deny AskUserQuestion
-    const canUseTool = async (toolName, input) => {
+    const canUseTool = async (toolName: string, input: unknown): Promise<CanUseToolResult> => {
       if (toolName === 'AskUserQuestion') {
         return {
           behavior: 'deny',
@@ -358,7 +527,7 @@ I will send you knowledge entries to process. For each entry, analyze it against
 
 Reply with your structured output indicating ready_for_next: true when you're ready for the first entry.`;
 
-    const options = {
+    const options: QueryOptions = {
       model: 'opus',
       systemPrompt: QUEUE_PROCESSOR_SYSTEM_PROMPT,
       canUseTool,
@@ -370,12 +539,12 @@ Reply with your structured output indicating ready_for_next: true when you're re
       // Don't load project CLAUDE.md - agent has its own instructions
     };
 
-    this.session = this.query({ prompt, options });
+    this.session = this.query!({ prompt, options });
 
     // Process initial response to get session ID
     for await (const message of this.session) {
       if (message.type === 'system' && message.subtype === 'init') {
-        this.sessionId = message.session_id;
+        this.sessionId = message.session_id!;
         logInfo(AGENTS.QUEUE_PROCESSOR, `Session started with ID ${this.sessionId}`);
       }
       if (message.type === 'result' && message.subtype === 'success') {
@@ -390,14 +559,14 @@ Reply with your structured output indicating ready_for_next: true when you're re
   /**
    * Send a message to the agent and get structured response
    */
-  async sendToAgent(message, isRetry = false) {
+  async sendToAgent(message: string, isRetry: boolean = false): Promise<QueueProcessorOutput | null> {
     await this.initSDK();
 
-    const options = {
+    const options: QueryOptions = {
       model: 'opus',
       systemPrompt: QUEUE_PROCESSOR_SYSTEM_PROMPT,
       resume: this.sessionId,
-      canUseTool: async (toolName, input) => {
+      canUseTool: async (toolName: string, input: unknown): Promise<CanUseToolResult> => {
         if (toolName === 'AskUserQuestion') {
           return {
             behavior: 'deny',
@@ -414,19 +583,19 @@ Reply with your structured output indicating ready_for_next: true when you're re
     };
 
     try {
-      const session = this.query({ prompt: message, options });
-      let structuredOutput = null;
+      const session = this.query!({ prompt: message, options });
+      let structuredOutput: QueueProcessorOutput | null = null;
 
       for await (const msg of session) {
         if (msg.type === 'result' && msg.subtype === 'success') {
-          structuredOutput = msg.structured_output;
+          structuredOutput = msg.structured_output || null;
         }
       }
 
       return structuredOutput;
     } catch (err) {
       // Check for context exhaustion
-      if (err.message && err.message.toLowerCase().includes('context') && !isRetry) {
+      if ((err as Error).message && (err as Error).message.toLowerCase().includes('context') && !isRetry) {
         logWarn(AGENTS.QUEUE_PROCESSOR, 'Context exhaustion detected, resetting session');
         this.resetSession();
         // Retry once with fresh session
@@ -439,7 +608,7 @@ Reply with your structured output indicating ready_for_next: true when you're re
   /**
    * Process a single queue entry
    */
-  async processEntry(entry, isRetry = false) {
+  async processEntry(entry: QueueEntry, isRetry: boolean = false): Promise<QueueProcessorOutput> {
     logInfo(AGENTS.QUEUE_PROCESSOR, `Processing queue entry ${entry.id} [${entry.entry.category}]`);
 
     try {
@@ -470,13 +639,13 @@ Analyze this against existing knowledge and take the appropriate action.`;
       };
     } catch (err) {
       // Check for context exhaustion
-      if (err.message && err.message.toLowerCase().includes('context') && !isRetry) {
+      if ((err as Error).message && (err as Error).message.toLowerCase().includes('context') && !isRetry) {
         logWarn(AGENTS.QUEUE_PROCESSOR, 'Context exhaustion detected in processEntry, resetting session');
         this.resetSession();
         // Retry once with fresh session
         return this.processEntry(entry, true);
       }
-      logError(AGENTS.QUEUE_PROCESSOR, `Error processing entry ${entry.id}: ${err.message}`);
+      logError(AGENTS.QUEUE_PROCESSOR, `Error processing entry ${entry.id}: ${(err as Error).message}`);
       throw err;
     }
   }
@@ -484,7 +653,7 @@ Analyze this against existing knowledge and take the appropriate action.`;
   /**
    * Process all pending queue entries
    */
-  async processQueue() {
+  async processQueue(): Promise<void> {
     if (this.isProcessing) return;
     this.isProcessing = true;
 
@@ -511,12 +680,13 @@ Analyze this against existing knowledge and take the appropriate action.`;
 
         try {
           const content = fs.readFileSync(filePath, 'utf8');
-          const entry = JSON.parse(content);
+          const entry: QueueEntry = JSON.parse(content);
 
           if (entry.status !== 'pending') continue;
 
           // Mark as processing
           entry.status = 'processing';
+          entry.processingStartedAt = Date.now();
           fs.writeFileSync(filePath, JSON.stringify(entry, null, 2));
 
           // Process the entry
@@ -534,14 +704,14 @@ Analyze this against existing knowledge and take the appropriate action.`;
           }
         } catch (err) {
           // Log error but continue processing queue
-          logError(AGENTS.QUEUE_PROCESSOR, `Error processing queue entry ${file}: ${err.message}`);
+          logError(AGENTS.QUEUE_PROCESSOR, `Error processing queue entry ${file}: ${(err as Error).message}`);
 
           // Reset status to pending for retry
           try {
             const content = fs.readFileSync(filePath, 'utf8');
-            const entry = JSON.parse(content);
+            const entry: QueueEntry = JSON.parse(content);
             entry.status = 'pending';
-            entry.lastError = err.message;
+            entry.lastError = (err as Error).message;
             fs.writeFileSync(filePath, JSON.stringify(entry, null, 2));
           } catch (e) {
             // File may have been deleted or corrupted
@@ -558,7 +728,7 @@ Analyze this against existing knowledge and take the appropriate action.`;
   /**
    * Reset the session (called on context exhaustion)
    */
-  resetSession() {
+  resetSession(): void {
     logInfo(AGENTS.QUEUE_PROCESSOR, `Resetting session${this.sessionId ? ` (previous ID: ${this.sessionId})` : ''}`);
     this.session = null;
     this.sessionId = null;
@@ -569,9 +739,9 @@ Analyze this against existing knowledge and take the appropriate action.`;
 // Remember Tool Handler
 // ============================================
 
-let queueProcessor = null;
+let queueProcessor: QueueProcessor | null = null;
 
-async function handleRemember(params) {
+async function handleRemember(params: RememberToolParams): Promise<string> {
   const { category, topic, details, files } = params;
 
   // Validate category (any string allowed, but must be provided)
@@ -601,7 +771,7 @@ async function handleRemember(params) {
   // Create queue entry with v1-style structure
   const timestamp = Date.now();
   const id = generateShortId();
-  const entry = {
+  const entry: QueueEntry = {
     id,
     timestamp,
     status: 'pending',
@@ -627,8 +797,8 @@ async function handleRemember(params) {
 
   // Trigger async processing (non-blocking)
   setImmediate(() => {
-    queueProcessor.processQueue().catch(err => {
-      logError(AGENTS.MCP_SERVER, `Queue processing error: ${err.message}`);
+    queueProcessor!.processQueue().catch(err => {
+      logError(AGENTS.MCP_SERVER, `Queue processing error: ${(err as Error).message}`);
     });
   });
 
@@ -639,9 +809,9 @@ async function handleRemember(params) {
 /**
  * Normalize category names to core categories where appropriate
  */
-function normalizeCategory(category) {
+function normalizeCategory(category: string): string {
   // Map common synonyms to core categories
-  const categoryMap = {
+  const categoryMap: Record<string, string> = {
     // architecture
     'architecture': 'architecture',
     'design': 'architecture',
@@ -686,7 +856,7 @@ function normalizeCategory(category) {
 // MCP Tool Definitions
 // ============================================
 
-const REMEMBER_TOOL = {
+const REMEMBER_TOOL: McpToolDefinition = {
   name: 'remember',
   description: `Capture project discoveries and learnings for persistent documentation. Automatically preserves knowledge about architecture, patterns, workflows, dependencies, and unique behaviors.
 
@@ -738,12 +908,12 @@ Knowledge is automatically deduplicated and organized. Conflicts are queued for 
 // MCP Request Handler
 // ============================================
 
-async function handleRequest(request) {
+async function handleRequest(request: JsonRpcRequest): Promise<string | null> {
   const { id, method, params } = request;
 
   switch (method) {
     case 'initialize':
-      return createResponse(id, {
+      return createResponse(id ?? null, {
         protocolVersion: '2024-11-05',
         capabilities: {
           tools: {}
@@ -760,24 +930,27 @@ async function handleRequest(request) {
       if (!queueProcessor) {
         queueProcessor = new QueueProcessor(projectRoot);
       }
+      // Recover stale entries before processing
+      recoverStaleQueueEntries(projectRoot);
       setImmediate(() => {
-        queueProcessor.processQueue().catch(err => {
-          logError(AGENTS.MCP_SERVER, `Startup queue processing error: ${err.message}`);
+        queueProcessor!.processQueue().catch(err => {
+          logError(AGENTS.MCP_SERVER, `Startup queue processing error: ${(err as Error).message}`);
         });
       });
       // This is a notification, no response needed
       return null;
 
     case 'tools/list':
-      return createResponse(id, {
+      return createResponse(id ?? null, {
         tools: [REMEMBER_TOOL]
       });
 
     case 'tools/call':
-      if (params?.name === 'remember') {
+      const toolParams = params as unknown as McpToolCallParams | undefined;
+      if (toolParams?.name === 'remember') {
         try {
-          const result = await handleRemember(params.arguments || {});
-          return createResponse(id, {
+          const result = await handleRemember((toolParams.arguments || {}) as unknown as RememberToolParams);
+          return createResponse(id ?? null, {
             content: [
               {
                 type: 'text',
@@ -786,18 +959,18 @@ async function handleRequest(request) {
             ]
           });
         } catch (err) {
-          return createResponse(id, {
+          return createResponse(id ?? null, {
             content: [
               {
                 type: 'text',
-                text: `Error: ${err.message}`
+                text: `Error: ${(err as Error).message}`
               }
             ],
             isError: true
           });
         }
       }
-      return createError(id, -32601, `Unknown tool: ${params?.name}`);
+      return createError(id ?? null, -32601, `Unknown tool: ${toolParams?.name}`);
 
     default:
       if (id !== undefined) {
@@ -812,18 +985,18 @@ async function handleRequest(request) {
 // Main Server Loop
 // ============================================
 
-function main() {
+function main(): void {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
     terminal: false
   });
 
-  rl.on('line', async (line) => {
+  rl.on('line', async (line: string) => {
     if (!line.trim()) return;
 
     try {
-      const request = JSON.parse(line);
+      const request: JsonRpcRequest = JSON.parse(line);
       const response = await handleRequest(request);
       if (response) {
         process.stdout.write(response + '\n');

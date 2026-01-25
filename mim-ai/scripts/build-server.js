@@ -15,7 +15,7 @@ const projectRoot = join(__dirname, '..');
 async function build() {
   try {
     await esbuild.build({
-      entryPoints: [join(projectRoot, 'servers/mim-server.cjs')],
+      entryPoints: [join(projectRoot, 'dist/servers/mim-server.js')],
       bundle: true,
       platform: 'node',
       target: 'node18',

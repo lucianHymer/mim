@@ -160,7 +160,7 @@ export function generateShortId() {
     return id;
 }
 export function writePendingReview(review) {
-    const filename = `${review.id}-${review.subject.replace(/[^a-z0-9]/gi, '-').slice(0, 30)}.json`;
+    const filename = `${review.id}.json`;
     const filepath = path.join(process.cwd(), PENDING_DIR, filename);
     // Ensure directory exists
     const dir = path.dirname(filepath);
