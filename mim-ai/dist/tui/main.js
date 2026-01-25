@@ -470,6 +470,8 @@ class MimGame {
         term.grabInput(true);
         // Initial draw
         this.fullDraw();
+        // Start music (game starts on TITLE without transitionTo(), so we need to start it here)
+        startMusic();
         // Start animation loops
         startAnimationLoop();
         this.startAnimation();
@@ -1215,6 +1217,7 @@ class MimGame {
             // Check if moving into death zone (chasm)
             if (baIsDeathZone(newX, newY)) {
                 // Death by falling into chasm
+                playSfx('death');
                 this.state.bridgeApproachPhase = 'dead';
                 this.draw();
                 return;
