@@ -3,26 +3,72 @@
 /**
  * Run Analysis Hook for Mim
  *
- * Executes Agent 2 (On-Changes Reviewer) to analyze knowledge files
- * against the current codebase and identify issues.
+ * Uses the Inquisitor Swarm pattern:
+ * 1. Read all knowledge entries
+ * 2. Spawn parallel Haiku inquisitors (one per entry)
+ * 3. Each inquisitor investigates ONE entry against the codebase
+ * 4. Collect and synthesize results into reviews
  */
 
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { logInfo, logWarn, logError, AGENTS } from '../dist/utils/logger.js';
 import {
-  CHANGES_REVIEWER_SYSTEM_PROMPT,
-  getChangesReviewerOutputJsonSchema,
   writePendingReview,
   writeLastAnalysis,
   generateShortId,
 } from '../dist/agents/changes-reviewer.js';
+import {
+  INQUISITOR_SYSTEM_PROMPT,
+  getInquisitorOutputJsonSchema,
+  parseKnowledgeEntries,
+} from '../dist/agents/inquisitor.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 
 const AGENT = AGENTS.CHANGES_REVIEWER;
 const KNOWLEDGE_DIR = '.claude/knowledge';
+const PENDING_DIR = `${KNOWLEDGE_DIR}/pending-review`;
 const CATEGORIES = ['architecture', 'patterns', 'dependencies', 'workflows', 'gotchas'];
+
+// Concurrency limit for inquisitor agents
+const MAX_CONCURRENT_INQUISITORS = 5;
+
+/**
+ * Read existing pending reviews
+ */
+function getPendingReviews() {
+  const reviews = [];
+  const dir = path.join(process.cwd(), PENDING_DIR);
+
+  if (!fs.existsSync(dir)) return reviews;
+
+  const files = fs.readdirSync(dir).filter(f => f.endsWith('.json'));
+  for (const file of files) {
+    try {
+      const content = fs.readFileSync(path.join(dir, file), 'utf-8');
+      const review = JSON.parse(content);
+      if (!review.answer) {  // Only unanswered reviews
+        reviews.push({ ...review, _filename: file });
+      }
+    } catch (e) {
+      logWarn(AGENT, `Failed to read review file: ${file}`);
+    }
+  }
+
+  return reviews;
+}
+
+/**
+ * Delete a pending review file
+ */
+function deletePendingReview(filename) {
+  const filepath = path.join(process.cwd(), PENDING_DIR, filename);
+  if (fs.existsSync(filepath)) {
+    fs.unlinkSync(filepath);
+    logInfo(AGENT, `Deleted stale review: ${filename}`);
+  }
+}
 
 /**
  * Get the current git HEAD commit hash
@@ -36,11 +82,10 @@ function getCurrentHead() {
 }
 
 /**
- * Read all knowledge files from .claude/knowledge/{category}/ directories
- * Returns formatted content string with all knowledge
+ * Read all knowledge files and parse into individual entries
  */
-function readAllKnowledgeFiles() {
-  const knowledgeContent = [];
+function getAllKnowledgeEntries() {
+  const entries = [];
   const baseDir = path.join(process.cwd(), KNOWLEDGE_DIR);
 
   for (const category of CATEGORIES) {
@@ -56,21 +101,219 @@ function readAllKnowledgeFiles() {
       const filepath = path.join(categoryDir, file);
       try {
         const content = fs.readFileSync(filepath, 'utf-8');
-        knowledgeContent.push(`## ${category}/${file}\n\n${content}`);
+        const parsed = parseKnowledgeEntries(category, file, content);
+        entries.push(...parsed);
       } catch (error) {
         logWarn(AGENT, `Failed to read knowledge file: ${filepath}`);
       }
     }
   }
 
-  return knowledgeContent.join('\n\n---\n\n');
+  return entries;
+}
+
+/**
+ * Check if a pending review is still relevant
+ * Returns true if the review should be kept, false if it's now moot
+ */
+async function checkReviewRelevance(review) {
+  const prompt = `Check if this pending review is still relevant:
+
+**Review ID:** ${review.id}
+**Subject:** ${review.subject}
+**Type:** ${review.type}
+**Question:** ${review.question}
+**Context:** ${review.context}
+**Knowledge File:** ${review.knowledge_file}
+
+Investigate if this issue still exists. The review was created because of a detected issue in the knowledge base. Check if:
+1. The knowledge file still exists
+2. The issue described is still present
+3. Code changes may have resolved the conflict
+
+Respond with:
+- still_relevant: true if the issue persists and needs human review
+- still_relevant: false if the issue was resolved (explain why)
+- reason: explanation of your finding`;
+
+  try {
+    const session = query({
+      prompt,
+      options: {
+        model: 'haiku',
+        systemPrompt: 'You are checking if a pending knowledge review is still relevant. Be brief and direct.',
+        canUseTool: async (tool, input) => {
+          const allowedTools = ['Read', 'Glob', 'Grep'];
+          if (allowedTools.includes(tool)) {
+            return { behavior: 'allow', updatedInput: input };
+          }
+          return { behavior: 'deny', message: 'Tool not allowed' };
+        },
+      },
+    });
+
+    for await (const event of session) {
+      if (event.type === 'result' && event.subtype === 'success') {
+        const text = event.text || '';
+        // Simple heuristic: if response contains "still_relevant: false" or "no longer", it's moot
+        const isMoot = text.toLowerCase().includes('still_relevant: false') ||
+                       text.toLowerCase().includes('no longer relevant') ||
+                       text.toLowerCase().includes('issue resolved') ||
+                       text.toLowerCase().includes('has been fixed');
+        return { review, stillRelevant: !isMoot, reason: text };
+      }
+    }
+    return { review, stillRelevant: true, reason: 'Could not determine' };
+  } catch (error) {
+    logWarn(AGENT, `Failed to check review relevance: ${error.message}`);
+    return { review, stillRelevant: true, reason: 'Error checking' };
+  }
+}
+
+/**
+ * Run a single inquisitor agent on one knowledge entry
+ */
+async function runInquisitor(entry) {
+  const prompt = `Investigate this knowledge entry:
+
+**Entry ID:** ${entry.id}
+**Category:** ${entry.category}
+**File:** ${entry.file}
+**Topic:** ${entry.topic}
+
+**Content:**
+${entry.content}
+
+Verify this knowledge against the actual codebase. Check if the referenced code exists, if the claims are accurate, and recommend the best location for this knowledge.`;
+
+  try {
+    const session = query({
+      prompt,
+      options: {
+        model: 'haiku',
+        systemPrompt: INQUISITOR_SYSTEM_PROMPT,
+        canUseTool: async (tool, input) => {
+          // Allow read-only tools and specific git commands
+          const allowedTools = ['Read', 'Glob', 'Grep'];
+          const allowedBashPrefixes = ['git log', 'git show', 'git diff', 'git blame'];
+
+          if (allowedTools.includes(tool)) {
+            return { behavior: 'allow', updatedInput: input };
+          }
+
+          if (tool === 'Bash') {
+            const cmd = input?.command || '';
+            if (allowedBashPrefixes.some(prefix => cmd.startsWith(prefix))) {
+              return { behavior: 'allow', updatedInput: input };
+            }
+            return { behavior: 'deny', message: 'Only git read commands allowed' };
+          }
+
+          return { behavior: 'deny', message: 'Tool not allowed for inquisitor' };
+        },
+        outputFormat: {
+          type: 'json_schema',
+          schema: getInquisitorOutputJsonSchema(),
+        },
+      },
+    });
+
+    // Collect result
+    for await (const event of session) {
+      if (event.type === 'result' && event.subtype === 'success') {
+        return {
+          entry,
+          output: event.structured_output,
+          success: true,
+        };
+      } else if (event.type === 'result' && event.subtype === 'error') {
+        return {
+          entry,
+          error: event.error,
+          success: false,
+        };
+      }
+    }
+
+    return { entry, error: 'No result received', success: false };
+  } catch (error) {
+    return { entry, error: error.message, success: false };
+  }
+}
+
+/**
+ * Run inquisitors in parallel with concurrency limit
+ */
+async function runInquisitorSwarm(entries) {
+  const results = [];
+  const pending = [...entries];
+
+  while (pending.length > 0 || results.length < entries.length) {
+    // Start new inquisitors up to concurrency limit
+    const batch = pending.splice(0, MAX_CONCURRENT_INQUISITORS);
+
+    if (batch.length > 0) {
+      logInfo(AGENT, `Launching ${batch.length} inquisitors (${pending.length} remaining)`);
+      const batchResults = await Promise.all(batch.map(entry => runInquisitor(entry)));
+      results.push(...batchResults);
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Synthesize inquisitor results into reviews and auto-fixes
+ */
+function synthesizeResults(results) {
+  const autoFixes = [];
+  const reviews = [];
+
+  for (const result of results) {
+    if (!result.success) {
+      logWarn(AGENT, `Inquisitor failed for ${result.entry.id}: ${result.error}`);
+      continue;
+    }
+
+    const output = result.output;
+    if (!output) continue;
+
+    // Skip valid entries
+    if (output.status === 'valid') {
+      logInfo(AGENT, `Entry ${output.entry_id} is valid`);
+      continue;
+    }
+
+    // Process issues
+    if (output.issue) {
+      if (output.issue.severity === 'auto_fix' && output.issue.suggested_fix) {
+        autoFixes.push({
+          entry_id: output.entry_id,
+          description: output.issue.description,
+          fix: output.issue.suggested_fix,
+        });
+      } else if (output.issue.severity === 'needs_review') {
+        reviews.push({
+          id: generateShortId(),
+          subject: `${result.entry.topic} - ${output.status}`,
+          type: output.status,
+          question: output.issue.review_question || output.issue.description,
+          context: `Category: ${result.entry.category}\nFile: ${result.entry.file}\n\nFindings: ${output.findings.current_behavior}\n\nLocation recommendation: ${output.location_context.scope} - ${output.location_context.reason}`,
+          options: output.issue.review_options || ['Keep current documentation', 'Update to match code', 'Remove this entry'],
+          knowledge_file: `${result.entry.category}/${result.entry.file}`,
+        });
+      }
+    }
+  }
+
+  return { autoFixes, reviews };
 }
 
 /**
  * Main function to run the analysis
  */
 async function main() {
-  logInfo(AGENT, 'Starting knowledge analysis');
+  logInfo(AGENT, 'Starting knowledge analysis (Inquisitor Swarm)');
 
   // Get current git HEAD
   const currentHead = getCurrentHead();
@@ -80,77 +323,62 @@ async function main() {
   }
   logInfo(AGENT, `Current HEAD: ${currentHead}`);
 
-  // Read all knowledge files
-  const knowledgeContent = readAllKnowledgeFiles();
-  if (!knowledgeContent) {
-    logInfo(AGENT, 'No knowledge files found to analyze');
-    writeLastAnalysis({
-      timestamp: new Date().toISOString(),
-      commit_hash: currentHead,
-    });
-    return;
-  }
-  logInfo(AGENT, 'Read knowledge files successfully');
-
-  // Create the agent prompt
-  const prompt = `Analyze these knowledge files against the codebase:\n\n${knowledgeContent}`;
-
   try {
-    // Start Agent 2 session
-    logInfo(AGENT, 'Starting agent session');
-    const session = query({
-      prompt,
-      options: {
-        model: 'opus',
-        systemPrompt: CHANGES_REVIEWER_SYSTEM_PROMPT,
-        canUseTool: async (tool, input) => {
-          if (tool === 'AskUserQuestion') {
-            return { behavior: 'deny', message: 'Create a pending review instead' };
-          }
-          return { behavior: 'allow', updatedInput: input };
-        },
-        outputFormat: {
-          type: 'json_schema',
-          schema: getChangesReviewerOutputJsonSchema(),
-        },
-      },
-    });
+    // PHASE 1: Check existing pending reviews first
+    const pendingReviews = getPendingReviews();
+    if (pendingReviews.length > 0) {
+      logInfo(AGENT, `Checking ${pendingReviews.length} existing pending reviews...`);
 
-    // Process agent stream
-    for await (const event of session) {
-      if (event.type === 'tool_use') {
-        logInfo(AGENT, `Using tool: ${event.name}`);
-      } else if (event.type === 'result') {
-        if (event.subtype === 'success') {
-          const output = event.structured_output;
+      const reviewChecks = await Promise.all(
+        pendingReviews.map(review => checkReviewRelevance(review))
+      );
 
-          if (output) {
-            // Process auto-fixes
-            if (output.auto_fixed && output.auto_fixed.length > 0) {
-              for (const fix of output.auto_fixed) {
-                logInfo(AGENT, `Auto-fixed: ${fix}`);
-              }
-            }
-
-            // Process reviews
-            if (output.reviews && output.reviews.length > 0) {
-              for (const review of output.reviews) {
-                // Ensure review has an ID
-                if (!review.id) {
-                  review.id = generateShortId();
-                }
-                writePendingReview(review);
-                logInfo(AGENT, `Created pending review: ${review.id} - ${review.subject}`);
-              }
-            }
-
-            logInfo(AGENT, `Analysis complete: ${output.auto_fixed?.length || 0} auto-fixes, ${output.reviews?.length || 0} reviews`);
-          }
-        } else if (event.subtype === 'error') {
-          logError(AGENT, `Agent error: ${event.error}`);
+      let staleCount = 0;
+      for (const check of reviewChecks) {
+        if (!check.stillRelevant) {
+          deletePendingReview(check.review._filename);
+          staleCount++;
         }
       }
+
+      if (staleCount > 0) {
+        logInfo(AGENT, `Cleaned up ${staleCount} stale reviews`);
+      }
     }
+
+    // PHASE 2: Investigate knowledge entries
+    const entries = getAllKnowledgeEntries();
+    if (entries.length === 0) {
+      logInfo(AGENT, 'No knowledge entries found to analyze');
+      writeLastAnalysis({
+        timestamp: new Date().toISOString(),
+        commit_hash: currentHead,
+      });
+      return;
+    }
+    logInfo(AGENT, `Found ${entries.length} knowledge entries to investigate`);
+
+    // Run inquisitor swarm
+    const results = await runInquisitorSwarm(entries);
+    logInfo(AGENT, `Inquisitor swarm complete: ${results.filter(r => r.success).length}/${results.length} successful`);
+
+    // Synthesize results
+    const { autoFixes, reviews } = synthesizeResults(results);
+
+    // PHASE 3: Apply auto-fixes
+    for (const fix of autoFixes) {
+      logInfo(AGENT, `Auto-fix: ${fix.entry_id} - ${fix.description}`);
+      // Auto-fixes are logged but manual for now
+      // In future: could use Edit tool to apply them
+    }
+
+    // PHASE 4: Write new pending reviews
+    for (const review of reviews) {
+      writePendingReview(review);
+      logInfo(AGENT, `Created pending review: ${review.id} - ${review.subject}`);
+    }
+
+    logInfo(AGENT, `Analysis complete: ${autoFixes.length} auto-fixes, ${reviews.length} new reviews`);
 
     // Update last analysis state
     writeLastAnalysis({

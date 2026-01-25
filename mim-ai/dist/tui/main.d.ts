@@ -1,10 +1,12 @@
 /**
  * Main TUI game loop for Mim-AI
  *
- * Implements a state machine with three screens:
- * 1. CHARACTER_SELECT - Player chooses their avatar
- * 2. BRIDGE_GUARDIAN - Questions are answered to pass the bridge
- * 3. WELLSPRING - Watch the Wellspring agent apply decisions
+ * Implements a state machine with five screens:
+ * 1. TITLE - Shows the MIM ASCII art title screen
+ * 2. CHARACTER_SELECT - Player chooses their avatar
+ * 3. BRIDGE_APPROACH - Player walks across bridge with chasm, signpost warns of guardian
+ * 4. BRIDGE_GUARDIAN - Questions are answered to pass the bridge
+ * 5. WELLSPRING - Watch the Wellspring agent apply decisions
  *
  * Uses terminal-kit with Strategy 5 (minimal redraws) for flicker-free rendering.
  */
@@ -12,7 +14,7 @@ import { Sprite } from './sprite.js';
 /**
  * Game screens representing the state machine states
  */
-export type GameScreen = 'CHARACTER_SELECT' | 'BRIDGE_GUARDIAN' | 'WELLSPRING';
+export type GameScreen = 'TITLE' | 'CHARACTER_SELECT' | 'BRIDGE_APPROACH' | 'BRIDGE_GUARDIAN' | 'WELLSPRING';
 /**
  * Callbacks for game events
  */
@@ -72,13 +74,33 @@ declare class MimGame {
     private saveReviewAnswer;
     private getCurrentReview;
     private answerCurrentReview;
+    /**
+     * Animate the guardian hopping between questions
+     */
+    private animateGuardianHopBetweenQuestions;
+    private setupBridgeApproachScene;
     private setupBridgeGuardianScene;
+    /**
+     * Animate the Bridge Guardian entrance sequence
+     */
+    private animateBridgeGuardianEntrance;
+    /**
+     * Helper to create a delay promise
+     */
+    private delay;
+    /**
+     * Lightweight update of just the text input line in the modal
+     * Calculates the exact position based on content layout
+     */
+    private updateTextInputLine;
     private setupWellspringScene;
     /**
      * Run Agent 3 (Wellspring) to apply user decisions
      */
     private runWellspringAgent;
+    private handleTitleInput;
     private handleCharacterSelectInput;
+    private handleBridgeApproachInput;
     private handleBridgeGuardianInput;
     private handleWellspringInput;
     private handleTextInput;
@@ -88,10 +110,57 @@ declare class MimGame {
      */
     private fullDraw;
     private draw;
+    private drawTitleScreen;
     private drawCharacterSelect;
+    /**
+     * Draw the Bridge Approach scene
+     *
+     * Handles three phases: walking, dead, and retreat
+     */
+    private drawBridgeApproachScene;
+    /**
+     * Draw the signpost dialogue overlay
+     */
+    private drawSignpostDialogue;
+    /**
+     * Create middle fill row for dialogue box (copies texture from left tile edge)
+     */
+    private createMiddleFill;
+    /**
+     * Wrap text with consistent background color
+     */
+    private wrapTextWithBg;
+    /**
+     * Strip ANSI escape codes from a string to get visible length
+     */
+    private stripAnsi;
+    /**
+     * Draw the death screen when player falls into chasm
+     */
+    private drawBridgeApproachDeathScreen;
+    /**
+     * Draw the retreat screen when player turns back
+     */
+    private drawBridgeApproachRetreatScreen;
+    /**
+     * Draw the Bridge Guardian scene with modal overlay
+     *
+     * Renders the scene (guardian, human, bridge) and overlays a question modal
+     * when in the 'modal' phase. During 'hopping' phase, no modal is shown.
+     */
+    private drawBridgeGuardianScene;
+    /**
+     * Build question modal buffer for double-buffered rendering
+     *
+     * Returns a string with escape codes that can be appended to the frame buffer.
+     */
+    private buildQuestionModalBuffer;
+    /**
+     * Create middle row borders for panels taller than 2 tiles
+     */
+    private createMiddleRowBorders;
     private drawScene;
     private drawInfoPanel;
-    private drawBridgeGuardianPanel;
     /**
      * Wrap text to fit within a given width
      */
@@ -138,11 +207,14 @@ export interface StartGameResult {
  * This is the main entry point for the TUI game.
  *
  * Game flow:
- * 1. Start on CHARACTER_SELECT screen
- * 2. After selection (ENTER), transition to BRIDGE_GUARDIAN
+ * 1. Start on TITLE screen with gradient ASCII art
+ * 2. Any key transitions to CHARACTER_SELECT screen
+ * 3. After selection (ENTER), transition to BRIDGE_APPROACH
+ *    - Player walks across bridge, avoiding chasm, reads signpost
  *    - Or skip intro (SPACE) to go directly to WELLSPRING
- * 3. After guardian passes, transition to WELLSPRING
- * 4. After Wellspring agent completes, exit game
+ * 4. Exiting bridge right side transitions to BRIDGE_GUARDIAN
+ * 5. After guardian passes, transition to WELLSPRING
+ * 6. After Wellspring agent completes, exit game
  *
  * @param callbacks - Optional callbacks for game events
  * @returns StartGameResult with game instance and completion promise

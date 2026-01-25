@@ -44,9 +44,38 @@ function getCacheKey(tileIndex, mirrored) {
     return `${tileIndex}:${mirrored ? 'M' : 'N'}`;
 }
 /**
+ * Create a pure black tile (for chasm/void rendering)
+ */
+function createBlackTile() {
+    const pixels = [];
+    for (let y = 0; y < 16; y++) {
+        const row = [];
+        for (let x = 0; x < 16; x++) {
+            row.push({ r: 0, g: 0, b: 0, a: 255 });
+        }
+        pixels.push(row);
+    }
+    return pixels;
+}
+// Cache for the black tile
+let blackTileCache = null;
+/**
+ * Get the cached black tile render
+ */
+function getBlackTileRender() {
+    if (!blackTileCache) {
+        blackTileCache = renderTile(createBlackTile());
+    }
+    return blackTileCache;
+}
+/**
  * Get or create a cached tile render
  */
 function getTileRender(tileset, grassPixels, tileIndex, mirrored = false) {
+    // Special case: CHASM (tile 0) should render as pure black
+    if (tileIndex === TILE.CHASM) {
+        return getBlackTileRender();
+    }
     const key = getCacheKey(tileIndex, mirrored);
     const cached = tileCache.get(key);
     if (cached) {
@@ -68,78 +97,114 @@ function getTileRender(tileset, grassPixels, tileIndex, mirrored = false) {
 // Scene Creation
 // ============================================================================
 /**
- * Create the Bridge Guardian scene (7x6)
+ * Create the Bridge Approach scene (7x6)
+ *
+ * Player walks across a narrow bridge over a chasm to reach the guardian.
+ * A signpost on the right edge warns of what lies ahead.
  *
  * Layout:
- * Row 0: TREE  TREE  CHASM CHASM CHASM COBBLE COBBLE
- * Row 1: GRASS GRASS CHASM CHASM CHASM COBBLE COBBLE
- * Row 2: TREE  (player) (guardian) BRIDGE BRIDGE COBBLE COBBLE  <-- middle row
- * Row 3: GRASS GRASS CHASM CHASM CHASM COBBLE COBBLE
- * Row 4: TREE  TREE  CHASM CHASM CHASM COBBLE COBBLE
- * Row 5: GRASS TREE  CHASM CHASM CHASM COBBLE COBBLE
+ * Row 0: TREE   CHASM  CHASM  CHASM  CHASM  CHASM  TREE    (land on edges)
+ * Row 1: TREE   CHASM  CHASM  CHASM  CHASM  CHASM  SIGN    (signpost on right edge)
+ * Row 2: GRASS  BRIDGE BRIDGE BRIDGE BRIDGE BRIDGE GRASS   (bridge - player walks here)
+ * Row 3: TREE   CHASM  CHASM  CHASM  CHASM  CHASM  TREE    (land on edges)
+ * Row 4: TREE   CHASM  CHASM  CHASM  CHASM  CHASM  TREE    (land on edges)
+ * Row 5: TREE   CHASM  CHASM  CHASM  CHASM  CHASM  TREE    (land on edges)
  *
- * Note: Player position (2,1) and Guardian position (2,2) are set as grass/chasm,
- * the actual sprites are overlaid during rendering.
+ * Player starts at (2, 0), exits at (2, 6) to transition to BRIDGE_GUARDIAN.
+ * Walking into chasm (cols 1-5 except bridge row) results in death.
+ */
+export function createBridgeApproachScene() {
+    const scene = [];
+    for (let row = 0; row < SCENE_HEIGHT; row++) {
+        const sceneRow = [];
+        for (let col = 0; col < SCENE_WIDTH; col++) {
+            // Left edge (col 0): Always land/trees
+            if (col === 0) {
+                if (row === 2) {
+                    // Grass at bridge level
+                    sceneRow.push(getGrassTile(row, col));
+                }
+                else {
+                    sceneRow.push(getTreeTile(row, col));
+                }
+            }
+            // Right edge (col 6): Signpost at row 1, grass at row 2, trees elsewhere
+            else if (col === 6) {
+                if (row === 1) {
+                    // Signpost tile (using index 63 like Arbiter's ForestIntro)
+                    sceneRow.push(63);
+                }
+                else if (row === 2) {
+                    // Grass at bridge level
+                    sceneRow.push(getGrassTile(row, col));
+                }
+                else {
+                    sceneRow.push(getTreeTile(row, col));
+                }
+            }
+            // Row 2: Bridge row (player walks here)
+            else if (row === 2) {
+                // Bridge tiles across the middle
+                sceneRow.push(TILE.BRIDGE_H);
+            }
+            // Everything else in the middle: Chasm
+            else {
+                sceneRow.push(TILE.CHASM);
+            }
+        }
+        scene.push(sceneRow);
+    }
+    return scene;
+}
+/**
+ * Create the Bridge Guardian scene (7x6)
+ *
+ * Layout (same style as Bridge Approach):
+ * Row 0: CHASM  CHASM  CHASM  CHASM  CHASM  CHASM  CHASM   (chasm)
+ * Row 1: CHASM  CHASM  BRIDGE CHASM  CHASM  CHASM  CHASM   (bridge extension for guardian to step aside)
+ * Row 2: GRASS  BRIDGE BRIDGE BRIDGE BRIDGE BRIDGE GRASS   (bridge - player crosses here)
+ * Row 3: CHASM  CHASM  CHASM  CHASM  CHASM  CHASM  CHASM   (chasm)
+ * Row 4: CHASM  CHASM  CHASM  CHASM  CHASM  CHASM  CHASM   (chasm)
+ * Row 5: CHASM  CHASM  CHASM  CHASM  CHASM  CHASM  CHASM   (chasm)
+ *
+ * Guardian starts on the bridge blocking passage (row 2, col 2-3).
+ * Player enters from left (row 2, col 0).
+ * Guardian has bridge extension at (row 1, col 2) to step onto when letting player pass.
+ * Player exits right (row 2, col 6).
  */
 export function createBridgeGuardianScene() {
     const scene = [];
     for (let row = 0; row < SCENE_HEIGHT; row++) {
         const sceneRow = [];
         for (let col = 0; col < SCENE_WIDTH; col++) {
-            // Right side: Cobblestone (cols 5-6)
-            if (col >= 5) {
-                sceneRow.push(TILE.COBBLESTONE);
+            // Row 0: All chasm
+            if (row === 0) {
+                sceneRow.push(TILE.CHASM);
             }
-            // Chasm area (cols 2-4), except bridge on row 2
-            else if (col >= 2 && col <= 4) {
-                if (row === 2 && col >= 3) {
-                    // Bridge tiles on the middle row (cols 3-4)
+            // Row 1: Bridge extension at col 2 for guardian, rest is chasm
+            else if (row === 1) {
+                if (col === 2) {
+                    // Bridge tile extension for guardian to step onto
                     sceneRow.push(TILE.BRIDGE_H);
                 }
-                else if (row === 2 && col === 2) {
-                    // Guardian position - use chasm as base (sprite will be overlaid)
-                    sceneRow.push(TILE.CHASM);
-                }
                 else {
                     sceneRow.push(TILE.CHASM);
                 }
             }
-            // Left side: Trees and grass (cols 0-1)
-            else {
-                // Row 0: Trees
-                if (row === 0) {
-                    sceneRow.push(getTreeTile(row, col));
-                }
-                // Row 1: Grass
-                else if (row === 1) {
+            // Row 2: Bridge row (player walks here)
+            else if (row === 2) {
+                if (col === 0 || col === 6) {
+                    // Grass at the ends of the bridge
                     sceneRow.push(getGrassTile(row, col));
                 }
-                // Row 2: Tree at col 0, grass at col 1 (player position)
-                else if (row === 2) {
-                    if (col === 0) {
-                        sceneRow.push(getTreeTile(row, col));
-                    }
-                    else {
-                        sceneRow.push(getGrassTile(row, col)); // Player position
-                    }
-                }
-                // Row 3: Grass
-                else if (row === 3) {
-                    sceneRow.push(getGrassTile(row, col));
-                }
-                // Row 4: Trees
-                else if (row === 4) {
-                    sceneRow.push(getTreeTile(row, col));
-                }
-                // Row 5: Grass at col 0, Tree at col 1
                 else {
-                    if (col === 0) {
-                        sceneRow.push(getGrassTile(row, col));
-                    }
-                    else {
-                        sceneRow.push(getTreeTile(row, col));
-                    }
+                    // Bridge tiles across the middle
+                    sceneRow.push(TILE.BRIDGE_H);
                 }
+            }
+            // Rows 3-5: All chasm
+            else {
+                sceneRow.push(TILE.CHASM);
             }
         }
         scene.push(sceneRow);
@@ -151,10 +216,10 @@ export function createBridgeGuardianScene() {
  *
  * Layout:
  * Row 0: TREE   TREE   TREE   TREE   TREE   TREE   TREE
- * Row 1: TREE   COBBLE COBBLE COBBLE COBBLE COBBLE (odin)
- * Row 2: (enter) COBBLE WATER  WATER  WATER  COBBLE TREE
- * Row 3: TREE   COBBLE WATER  (mim)  WATER  COBBLE TREE
- * Row 4: TREE   COBBLE COBBLE (dest) COBBLE COBBLE TREE
+ * Row 1: TREE   GRASS  GRASS  GRASS  GRASS  GRASS  (odin)
+ * Row 2: (enter) GRASS  WATER  WATER  WATER  GRASS  TREE
+ * Row 3: TREE   GRASS  WATER  (mim)  WATER  GRASS  TREE
+ * Row 4: TREE   GRASS  GRASS  (dest) GRASS  GRASS  TREE
  * Row 5: TREE   TREE   TREE   TREE   TREE   TREE   TREE
  *
  * Note: Positions for sprites (odin at 1,6, enter at 2,0, mim at 3,3, dest at 4,3)
@@ -169,27 +234,24 @@ export function createWellspringScene() {
             if (row === 0) {
                 sceneRow.push(getTreeTile(row, col));
             }
-            // Row 1: Tree, Cobbles, Odin position (tree base for Odin at col 6)
+            // Row 1: Tree, Grass path, Odin position (grass base for Odin at col 6)
             else if (row === 1) {
                 if (col === 0) {
                     sceneRow.push(getTreeTile(row, col));
                 }
-                else if (col === 6) {
-                    // Odin position - use cobblestone as base
-                    sceneRow.push(TILE.COBBLESTONE);
-                }
                 else {
-                    sceneRow.push(TILE.COBBLESTONE);
+                    // Grass path, including Odin's position at col 6
+                    sceneRow.push(getGrassTile(row, col));
                 }
             }
-            // Row 2: Enter position, Cobble, Water, Water, Water, Cobble, Tree
+            // Row 2: Enter position, Grass, Water, Water, Water, Grass, Tree
             else if (row === 2) {
                 if (col === 0) {
                     // Enter position - use grass as base for player entry
                     sceneRow.push(getGrassTile(row, col));
                 }
                 else if (col === 1 || col === 5) {
-                    sceneRow.push(TILE.COBBLESTONE);
+                    sceneRow.push(getGrassTile(row, col));
                 }
                 else if (col >= 2 && col <= 4) {
                     sceneRow.push(TILE.WAVY_WATER);
@@ -198,27 +260,27 @@ export function createWellspringScene() {
                     sceneRow.push(getTreeTile(row, col));
                 }
             }
-            // Row 3: Tree, Cobble, Water, Mim position (water), Water, Cobble, Tree
+            // Row 3: Tree, Grass, Water, Mim position (water), Water, Grass, Tree
             else if (row === 3) {
                 if (col === 0 || col === 6) {
                     sceneRow.push(getTreeTile(row, col));
                 }
                 else if (col === 1 || col === 5) {
-                    sceneRow.push(TILE.COBBLESTONE);
+                    sceneRow.push(getGrassTile(row, col));
                 }
                 else {
                     // Water tiles (cols 2-4), including Mim's position at col 3
                     sceneRow.push(TILE.WAVY_WATER);
                 }
             }
-            // Row 4: Tree, Cobbles with dest position at col 3, Tree
+            // Row 4: Tree, Grass path with dest position at col 3, Tree
             else if (row === 4) {
                 if (col === 0 || col === 6) {
                     sceneRow.push(getTreeTile(row, col));
                 }
                 else {
-                    // Cobblestone path, including destination at col 3
-                    sceneRow.push(TILE.COBBLESTONE);
+                    // Grass path, including destination at col 3
+                    sceneRow.push(getGrassTile(row, col));
                 }
             }
             // Row 5: All trees
@@ -255,6 +317,8 @@ function createDefaultScene() {
  */
 export function createScene(_sprites, sceneType) {
     switch (sceneType) {
+        case 'bridge-approach':
+            return createBridgeApproachScene();
         case 'bridge-guardian':
             return createBridgeGuardianScene();
         case 'wellspring':
@@ -340,9 +404,10 @@ export function renderScene(tileset, background, sprites) {
                 }
                 // Render sprite tile with potential indicator overlays
                 let pixels = extractTile(tileset, spriteTile);
-                // Composite on grass if needed
+                // Composite sprite on the actual background tile at this position
                 if (spriteTile >= 80) {
-                    pixels = compositeTiles(pixels, grassPixels, 1);
+                    const backgroundPixels = extractTile(tileset, tileIndex);
+                    pixels = compositeTiles(pixels, backgroundPixels, 1);
                 }
                 // Add chat bubble to top-right corner
                 if (sprite.indicator === 'chat') {

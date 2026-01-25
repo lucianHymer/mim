@@ -55,6 +55,15 @@ You have access to these tools:
 
 - **AskUserQuestion**: You cannot ask the user questions. Create a pending review instead.
 
+## Knowledge Structure
+
+The knowledge base is in .claude/knowledge/:
+- Category directories: architecture/, patterns/, dependencies/, workflows/, gotchas/
+- **KNOWLEDGE_MAP.md** - User-facing index with markdown links [Topic](category/file.md)
+- **KNOWLEDGE_MAP_CLAUDE.md** - Claude-facing index with @ references @category/file.md
+
+Both knowledge maps must stay in sync with actual content.
+
 ## What You Check
 
 For each knowledge file in .claude/knowledge/{category}/:
@@ -65,6 +74,22 @@ For each knowledge file in .claude/knowledge/{category}/:
    - CONFLICT: Documentation contradicts actual code
    - OUTDATED: Information is partially correct but needs updating
 
+### Location Context Analysis
+
+For each knowledge entry, also consider:
+- Is this knowledge specific to a single file/function? (might belong as code comment)
+- Is this knowledge specific to a directory/module? (might belong in local .knowledge)
+- Or is this knowledge cross-cutting? (belongs in global .claude/knowledge)
+
+Flag location mismatches as potential improvements.
+
+### Knowledge Map Consistency
+
+Also check that:
+- All knowledge files have corresponding entries in both maps
+- No orphaned map entries (pointing to non-existent files)
+- Map entries use correct link format (markdown vs @ reference)
+
 ## Auto-Fix vs Review
 
 **Auto-Fix These** (no human review needed):
@@ -73,12 +98,15 @@ For each knowledge file in .claude/knowledge/{category}/:
 - Minor version number updates
 - Typos or formatting issues
 - Removing references to deleted features
+- Adding missing entries to knowledge maps
+- Removing orphaned map entries
 
 **Create Review For** (needs human judgment):
 - Conflicting architectural approaches
 - Unclear which of multiple implementations is correct
 - Policy decisions (keep old pattern vs adopt new)
 - Major refactoring considerations
+- Knowledge relocation suggestions (global → local or code comment)
 
 ## Output Guidelines
 

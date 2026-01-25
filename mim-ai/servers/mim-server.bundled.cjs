@@ -21127,7 +21127,6 @@ var { logInfo, logWarn, logError, AGENTS } = require_logger();
 var KNOWLEDGE_BASE_DIR = ".claude/knowledge";
 var QUEUE_DIR = `${KNOWLEDGE_BASE_DIR}/remember-queue`;
 var PENDING_REVIEW_DIR = `${KNOWLEDGE_BASE_DIR}/pending-review`;
-var CATEGORIES = ["architecture", "patterns", "dependencies", "workflows", "gotchas"];
 function createResponse(id, result) {
   return JSON.stringify({
     jsonrpc: "2.0",
@@ -21189,7 +21188,7 @@ function findClaudeExecutable() {
 }
 var QUEUE_PROCESSOR_SYSTEM_PROMPT = `You are the Knowledge Processor for Mim, a persistent memory system.
 
-Your job is to process incoming knowledge entries and organize them into the appropriate files.
+Your job is to process incoming knowledge entries and organize them into the appropriate files, then update the knowledge maps.
 
 ## Available Tools
 
@@ -21200,14 +21199,28 @@ Use these tools to examine existing knowledge and write new entries.
 
 ## Knowledge Structure
 
-The knowledge base is organized into these directories under .claude/knowledge/:
+The knowledge base is organized under .claude/knowledge/:
+
+**Category Directories:**
 - architecture/ - System design, component relationships, data flow
 - patterns/ - Code patterns, conventions, idioms used in the project
 - dependencies/ - External dependencies, their purposes, version notes
 - workflows/ - Development workflows, deployment processes, common tasks
 - gotchas/ - Pitfalls, gotchas, things that don't work as expected
 
-Each directory contains markdown files organized by topic.
+**Knowledge Maps (MUST UPDATE BOTH):**
+- KNOWLEDGE_MAP.md - User-facing index with markdown links like [Topic Name](category/file.md)
+- KNOWLEDGE_MAP_CLAUDE.md - Claude-facing index with RELATIVE @ references like @category/file.md
+
+Both maps should have identical structure, just different link formats.
+
+## Entry Format
+
+Each entry you receive has:
+- category: The knowledge category (architecture, patterns, etc.)
+- topic: Brief descriptive title
+- details: Full content/explanation
+- files: Optional related file paths (comma-separated)
 
 ## Your Task
 
@@ -21219,6 +21232,10 @@ When you receive a knowledge entry to process:
    - If duplicate: Skip it (action: duplicate_skipped)
    - If conflicts: Create a pending-review JSON file (action: created_review)
    - Otherwise: Append to the appropriate file or create a new one (action: added/updated)
+4. **UPDATE BOTH KNOWLEDGE MAPS** when adding/updating:
+   - Add entry to KNOWLEDGE_MAP.md with markdown link: [Topic](category/file.md)
+   - Add entry to KNOWLEDGE_MAP_CLAUDE.md with @ reference: @category/file.md
+   - Place under the appropriate category section (## Architecture, ## Patterns, etc.)
 
 ## Pending Review Format
 
@@ -21237,10 +21254,21 @@ When conflicts are detected, write to .claude/knowledge/pending-review/{id}-{sub
 ## File Organization
 
 When adding new knowledge:
-- Use descriptive filenames like architecture/api-design.md
+- Use descriptive filenames based on topic: architecture/api-design.md
 - Append to existing files when the topic matches
 - Create new files for distinct topics
 - Use markdown formatting with headers
+- Include the topic as an H2 header (## Topic Name)
+- Include related files if provided
+
+Example file content:
+\`\`\`markdown
+## Redis Caching Strategy
+
+The application uses Redis for session caching with a 30-minute TTL.
+
+**Related files:** src/cache/redis.js, config/redis.yml
+\`\`\`
 
 ## Structured Output
 
@@ -21258,6 +21286,7 @@ Example: {"status":"processed","action":"added","file_modified":"architecture/ap
 - When in doubt about conflicts, create a review entry
 - Always signal ready_for_next: true when done processing an entry
 - If you encounter errors, still output valid JSON with ready_for_next: true
+- **ALWAYS update both knowledge maps when adding or updating entries**
 
 ## Output Schema (REQUIRED)
 
@@ -21537,13 +21566,17 @@ Analyze this against existing knowledge and take the appropriate action.`;
 };
 var queueProcessor = null;
 async function handleRemember(params) {
-  const { category, content } = params;
-  if (!CATEGORIES.includes(category)) {
-    throw new Error(`Invalid category: ${category}. Must be one of: ${CATEGORIES.join(", ")}`);
+  const { category, topic, details, files } = params;
+  if (!category || typeof category !== "string" || category.trim().length === 0) {
+    throw new Error("Category is required and must be a non-empty string");
   }
-  if (!content || typeof content !== "string" || content.trim().length === 0) {
-    throw new Error("Content is required and must be a non-empty string");
+  if (!topic || typeof topic !== "string" || topic.trim().length === 0) {
+    throw new Error("Topic is required and must be a non-empty string");
   }
+  if (!details || typeof details !== "string" || details.trim().length === 0) {
+    throw new Error("Details is required and must be a non-empty string");
+  }
+  const normalizedCategory = normalizeCategory(category.trim().toLowerCase());
   const projectRoot = getProjectRoot();
   const queueDir = path.join(projectRoot, QUEUE_DIR);
   ensureDir(queueDir);
@@ -21554,14 +21587,16 @@ async function handleRemember(params) {
     timestamp,
     status: "pending",
     entry: {
-      category,
-      content: content.trim()
+      category: normalizedCategory,
+      topic: topic.trim(),
+      details: details.trim(),
+      files: files ? files.trim() : null
     }
   };
   const filename = `${timestamp}-${id}.json`;
   const filepath = path.join(queueDir, filename);
   fs2.writeFileSync(filepath, JSON.stringify(entry, null, 2));
-  logInfo(AGENTS.MCP_SERVER, `Entry queued: ${id} [${category}]`);
+  logInfo(AGENTS.MCP_SERVER, `Entry queued: ${id} [${normalizedCategory}] ${topic}`);
   if (!queueProcessor) {
     queueProcessor = new QueueProcessor(projectRoot);
   }
@@ -21570,7 +21605,47 @@ async function handleRemember(params) {
       logError(AGENTS.MCP_SERVER, `Queue processing error: ${err.message}`);
     });
   });
-  return `Queued for processing: [${category}] ${content.substring(0, 50)}${content.length > 50 ? "..." : ""}`;
+  return `\u2713 Remembered: [${normalizedCategory}] ${topic}`;
+}
+function normalizeCategory(category) {
+  const categoryMap = {
+    // architecture
+    "architecture": "architecture",
+    "design": "architecture",
+    "structure": "architecture",
+    "system": "architecture",
+    // patterns
+    "patterns": "patterns",
+    "pattern": "patterns",
+    "convention": "patterns",
+    "conventions": "patterns",
+    "idiom": "patterns",
+    "idioms": "patterns",
+    // dependencies
+    "dependencies": "dependencies",
+    "dependency": "dependencies",
+    "deps": "dependencies",
+    "packages": "dependencies",
+    "libs": "dependencies",
+    "libraries": "dependencies",
+    // workflows
+    "workflows": "workflows",
+    "workflow": "workflows",
+    "process": "workflows",
+    "processes": "workflows",
+    "deployment": "workflows",
+    "build": "workflows",
+    // gotchas
+    "gotchas": "gotchas",
+    "gotcha": "gotchas",
+    "pitfall": "gotchas",
+    "pitfalls": "gotchas",
+    "bug": "gotchas",
+    "bugs": "gotchas",
+    "quirk": "gotchas",
+    "quirks": "gotchas"
+  };
+  return categoryMap[category] || category;
 }
 var REMEMBER_TOOL = {
   name: "remember",
@@ -21599,15 +21674,24 @@ Knowledge is automatically deduplicated and organized. Conflicts are queued for 
     properties: {
       category: {
         type: "string",
-        enum: ["architecture", "patterns", "dependencies", "workflows", "gotchas"],
-        description: "Category: architecture (system design, data flow), patterns (code conventions, idioms), dependencies (external libs, versions), workflows (dev processes, deployment), gotchas (pitfalls, non-obvious behaviors)"
+        description: "Category name for organizing this knowledge. Use descriptive categories like: architecture, api, database, pattern, dependency, workflow, config, gotcha, convention, testing, security, deployment, frontend, backend, auth, etc. Any relevant category name is acceptable.",
+        examples: ["architecture", "patterns", "dependencies", "workflows", "gotchas", "api", "database", "config", "testing", "security", "auth"]
       },
-      content: {
+      topic: {
         type: "string",
-        description: "Complete details of what you discovered. Include specifics, configuration values, file paths, and context that would help understand this knowledge later."
+        description: 'Brief, descriptive title for what you learned (e.g., "Redis caching strategy", "JWT authentication flow", "MongoDB connection pooling")'
+      },
+      details: {
+        type: "string",
+        description: "Complete details of what you discovered. Include specifics, configuration values, important notes, and any context that would help understand this knowledge later."
+      },
+      files: {
+        type: "string",
+        description: "Comma-separated list of related file paths where this knowledge was discovered (optional but recommended)",
+        examples: ["app.js", "src/auth/jwt.js, src/middleware/auth.js", "config/database.yml"]
       }
     },
-    required: ["category", "content"]
+    required: ["category", "topic", "details"]
   }
 };
 async function handleRequest(request) {

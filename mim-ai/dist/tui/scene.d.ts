@@ -17,22 +17,42 @@ export type TileSpec = number | {
 /**
  * Scene type for selecting different layouts
  */
-export type SceneType = 'bridge-guardian' | 'wellspring' | 'default';
+export type SceneType = 'bridge-approach' | 'bridge-guardian' | 'wellspring' | 'default';
 export declare const SCENE_WIDTH = 7;
 export declare const SCENE_HEIGHT = 6;
 /**
- * Create the Bridge Guardian scene (7x6)
+ * Create the Bridge Approach scene (7x6)
+ *
+ * Player walks across a narrow bridge over a chasm to reach the guardian.
+ * A signpost on the right edge warns of what lies ahead.
  *
  * Layout:
- * Row 0: TREE  TREE  CHASM CHASM CHASM COBBLE COBBLE
- * Row 1: GRASS GRASS CHASM CHASM CHASM COBBLE COBBLE
- * Row 2: TREE  (player) (guardian) BRIDGE BRIDGE COBBLE COBBLE  <-- middle row
- * Row 3: GRASS GRASS CHASM CHASM CHASM COBBLE COBBLE
- * Row 4: TREE  TREE  CHASM CHASM CHASM COBBLE COBBLE
- * Row 5: GRASS TREE  CHASM CHASM CHASM COBBLE COBBLE
+ * Row 0: TREE   CHASM  CHASM  CHASM  CHASM  CHASM  TREE    (land on edges)
+ * Row 1: TREE   CHASM  CHASM  CHASM  CHASM  CHASM  SIGN    (signpost on right edge)
+ * Row 2: GRASS  BRIDGE BRIDGE BRIDGE BRIDGE BRIDGE GRASS   (bridge - player walks here)
+ * Row 3: TREE   CHASM  CHASM  CHASM  CHASM  CHASM  TREE    (land on edges)
+ * Row 4: TREE   CHASM  CHASM  CHASM  CHASM  CHASM  TREE    (land on edges)
+ * Row 5: TREE   CHASM  CHASM  CHASM  CHASM  CHASM  TREE    (land on edges)
  *
- * Note: Player position (2,1) and Guardian position (2,2) are set as grass/chasm,
- * the actual sprites are overlaid during rendering.
+ * Player starts at (2, 0), exits at (2, 6) to transition to BRIDGE_GUARDIAN.
+ * Walking into chasm (cols 1-5 except bridge row) results in death.
+ */
+export declare function createBridgeApproachScene(): TileSpec[][];
+/**
+ * Create the Bridge Guardian scene (7x6)
+ *
+ * Layout (same style as Bridge Approach):
+ * Row 0: CHASM  CHASM  CHASM  CHASM  CHASM  CHASM  CHASM   (chasm)
+ * Row 1: CHASM  CHASM  BRIDGE CHASM  CHASM  CHASM  CHASM   (bridge extension for guardian to step aside)
+ * Row 2: GRASS  BRIDGE BRIDGE BRIDGE BRIDGE BRIDGE GRASS   (bridge - player crosses here)
+ * Row 3: CHASM  CHASM  CHASM  CHASM  CHASM  CHASM  CHASM   (chasm)
+ * Row 4: CHASM  CHASM  CHASM  CHASM  CHASM  CHASM  CHASM   (chasm)
+ * Row 5: CHASM  CHASM  CHASM  CHASM  CHASM  CHASM  CHASM   (chasm)
+ *
+ * Guardian starts on the bridge blocking passage (row 2, col 2-3).
+ * Player enters from left (row 2, col 0).
+ * Guardian has bridge extension at (row 1, col 2) to step onto when letting player pass.
+ * Player exits right (row 2, col 6).
  */
 export declare function createBridgeGuardianScene(): TileSpec[][];
 /**
@@ -40,10 +60,10 @@ export declare function createBridgeGuardianScene(): TileSpec[][];
  *
  * Layout:
  * Row 0: TREE   TREE   TREE   TREE   TREE   TREE   TREE
- * Row 1: TREE   COBBLE COBBLE COBBLE COBBLE COBBLE (odin)
- * Row 2: (enter) COBBLE WATER  WATER  WATER  COBBLE TREE
- * Row 3: TREE   COBBLE WATER  (mim)  WATER  COBBLE TREE
- * Row 4: TREE   COBBLE COBBLE (dest) COBBLE COBBLE TREE
+ * Row 1: TREE   GRASS  GRASS  GRASS  GRASS  GRASS  (odin)
+ * Row 2: (enter) GRASS  WATER  WATER  WATER  GRASS  TREE
+ * Row 3: TREE   GRASS  WATER  (mim)  WATER  GRASS  TREE
+ * Row 4: TREE   GRASS  GRASS  (dest) GRASS  GRASS  TREE
  * Row 5: TREE   TREE   TREE   TREE   TREE   TREE   TREE
  *
  * Note: Positions for sprites (odin at 1,6, enter at 2,0, mim at 3,3, dest at 4,3)
