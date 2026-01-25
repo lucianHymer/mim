@@ -8,7 +8,8 @@
     "mim": "./bin/mim.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node scripts/build-server.js",
+    "build:server": "node scripts/build-server.js",
     "dev": "tsx src/index.ts",
     "test": "vitest"
   },

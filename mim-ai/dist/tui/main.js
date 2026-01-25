@@ -1277,19 +1277,22 @@ class MimGame {
  * @returns StartGameResult with game instance and completion promise
  */
 export async function startGame(callbacks = {}) {
+    // Save original callbacks before wrapping to avoid circular reference
+    const originalOnComplete = callbacks.onComplete;
+    const originalOnExit = callbacks.onExit;
     const game = new MimGame(callbacks);
     const completion = new Promise((resolve, reject) => {
         const wrappedCallbacks = {
             ...callbacks,
             onComplete: () => {
-                if (callbacks.onComplete) {
-                    callbacks.onComplete();
+                if (originalOnComplete) {
+                    originalOnComplete();
                 }
                 resolve();
             },
             onExit: () => {
-                if (callbacks.onExit) {
-                    callbacks.onExit();
+                if (originalOnExit) {
+                    originalOnExit();
                 }
                 resolve();
             },
