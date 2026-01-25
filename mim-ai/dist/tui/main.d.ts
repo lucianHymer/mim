@@ -81,6 +81,7 @@ declare class MimGame {
     private handleCharacterSelectInput;
     private handleBridgeGuardianInput;
     private handleWellspringInput;
+    private handleTextInput;
     private crossBridge;
     /**
      * Full redraw of all components (debounced to prevent signal storms)

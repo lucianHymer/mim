@@ -8,20 +8,20 @@ export declare const ReviewEntrySchema: z.ZodObject<{
     options: z.ZodArray<z.ZodString, "many">;
     knowledge_file: z.ZodString;
 }, "strip", z.ZodTypeAny, {
+    options: string[];
+    type: "stale" | "conflict" | "outdated";
+    context: string;
     id: string;
     subject: string;
-    type: "stale" | "conflict" | "outdated";
-    options: string[];
     question: string;
-    context: string;
     knowledge_file: string;
 }, {
+    options: string[];
+    type: "stale" | "conflict" | "outdated";
+    context: string;
     id: string;
     subject: string;
-    type: "stale" | "conflict" | "outdated";
-    options: string[];
     question: string;
-    context: string;
     knowledge_file: string;
 }>;
 export declare const ChangesReviewerOutputSchema: z.ZodObject<{
@@ -34,48 +34,48 @@ export declare const ChangesReviewerOutputSchema: z.ZodObject<{
         options: z.ZodArray<z.ZodString, "many">;
         knowledge_file: z.ZodString;
     }, "strip", z.ZodTypeAny, {
+        options: string[];
+        type: "stale" | "conflict" | "outdated";
+        context: string;
         id: string;
         subject: string;
-        type: "stale" | "conflict" | "outdated";
-        options: string[];
         question: string;
-        context: string;
         knowledge_file: string;
     }, {
+        options: string[];
+        type: "stale" | "conflict" | "outdated";
+        context: string;
         id: string;
         subject: string;
-        type: "stale" | "conflict" | "outdated";
-        options: string[];
         question: string;
-        context: string;
         knowledge_file: string;
     }>, "many">;
     auto_fixed: z.ZodArray<z.ZodString, "many">;
     done: z.ZodBoolean;
 }, "strip", z.ZodTypeAny, {
+    done: boolean;
     reviews: {
+        options: string[];
+        type: "stale" | "conflict" | "outdated";
+        context: string;
         id: string;
         subject: string;
-        type: "stale" | "conflict" | "outdated";
-        options: string[];
         question: string;
-        context: string;
         knowledge_file: string;
     }[];
     auto_fixed: string[];
-    done: boolean;
 }, {
+    done: boolean;
     reviews: {
+        options: string[];
+        type: "stale" | "conflict" | "outdated";
+        context: string;
         id: string;
         subject: string;
-        type: "stale" | "conflict" | "outdated";
-        options: string[];
         question: string;
-        context: string;
         knowledge_file: string;
     }[];
     auto_fixed: string[];
-    done: boolean;
 }>;
 export type ReviewEntry = z.infer<typeof ReviewEntrySchema>;
 export type ChangesReviewerOutput = z.infer<typeof ChangesReviewerOutputSchema>;

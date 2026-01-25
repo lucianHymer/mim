@@ -126,6 +126,10 @@ interface GameState {
   textInputMode: boolean;
   /** Current text input value */
   textInputValue: string;
+  /** Whether "Other" input mode is active */
+  otherInputActive: boolean;
+  /** Text being typed for "Other" option */
+  otherInputText: string;
 }
 
 /**
@@ -396,6 +400,8 @@ class MimGame {
       agentDone: false,
       textInputMode: false,
       textInputValue: '',
+      otherInputActive: false,
+      otherInputText: '',
     };
     this.tracker = {
       lastTileFrame: -1,
@@ -1063,6 +1069,33 @@ class MimGame {
           this.stop();
         }
         break;
+    }
+  }
+
+  private handleTextInput(key: string): void {
+    if (key === 'ENTER') {
+      // Submit the text input
+      if (this.state.textInputValue.trim().length > 0) {
+        this.answerCurrentReview(`Other: ${this.state.textInputValue.trim()}`);
+      }
+      this.state.textInputMode = false;
+      this.state.textInputValue = '';
+      this.fullDraw();
+    } else if (key === 'ESCAPE') {
+      // Cancel text input
+      this.state.textInputMode = false;
+      this.state.textInputValue = '';
+      this.fullDraw();
+    } else if (key === 'BACKSPACE' || key === 'DELETE') {
+      // Delete last character
+      this.state.textInputValue = this.state.textInputValue.slice(0, -1);
+      this.fullDraw();
+    } else if (key.length === 1 && key.charCodeAt(0) >= 32) {
+      // Add printable character (limit to reasonable length)
+      if (this.state.textInputValue.length < 200) {
+        this.state.textInputValue += key;
+        this.fullDraw();
+      }
     }
   }
 

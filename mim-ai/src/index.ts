@@ -1,3 +1,9 @@
 #!/usr/bin/env node
 
-console.log('mim-ai v2.0.0');
+export { printTitleArt, showTitleScreen, getTitleArt } from './tui/title-screen.js';
+export { startGame, MimGame } from './tui/main.js';
+
+// When run directly, show the title
+import { printTitleArt } from './tui/title-screen.js';
+printTitleArt();
+console.log('  v2.0.0\n');

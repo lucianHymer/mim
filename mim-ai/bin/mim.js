@@ -19,7 +19,25 @@ const KNOWLEDGE_SUBDIRS = [
 const args = process.argv.slice(2);
 const command = args[0] || 'status';
 
+/**
+ * Print the gradient title art
+ */
+async function printTitle() {
+  try {
+    const { printTitleArt } = await import('../dist/tui/title-screen.js');
+    printTitleArt();
+  } catch {
+    // Fallback if title screen module not available
+    console.log('\n  MIM - Persistent Memory for Claude Code\n');
+  }
+}
+
 async function main() {
+  // Show title for most commands (not help)
+  if (command !== 'help' && command !== '--help' && command !== '-h') {
+    await printTitle();
+  }
+
   switch (command) {
     case 'status':
       await checkStatus();
@@ -36,6 +54,7 @@ async function main() {
     case 'help':
     case '--help':
     case '-h':
+      await printTitle();
       printHelp();
       break;
 
