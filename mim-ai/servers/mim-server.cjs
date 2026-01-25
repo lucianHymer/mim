@@ -79,6 +79,39 @@ function getProjectRoot() {
   return process.cwd();
 }
 
+function findClaudeExecutable() {
+  // Check common locations for claude executable
+  const { execSync } = require('child_process');
+
+  try {
+    // Try 'which claude' first
+    const result = execSync('which claude', { encoding: 'utf8' }).trim();
+    if (result && fs.existsSync(result)) {
+      // Follow symlinks to get the real path
+      return fs.realpathSync(result);
+    }
+  } catch (e) {
+    // which failed, try common paths
+  }
+
+  // Common installation paths
+  const homedir = require('os').homedir();
+  const commonPaths = [
+    path.join(homedir, '.local', 'bin', 'claude'),
+    '/usr/local/bin/claude',
+    '/usr/bin/claude',
+  ];
+
+  for (const p of commonPaths) {
+    if (fs.existsSync(p)) {
+      return fs.realpathSync(p);
+    }
+  }
+
+  // Fallback - assume 'claude' is in PATH
+  return 'claude';
+}
+
 // ============================================
 // Queue Processor Agent (Agent 1)
 // ============================================
@@ -302,6 +335,7 @@ Reply with your structured output indicating ready_for_next: true when you're re
         type: 'json_schema',
         schema: QUEUE_PROCESSOR_OUTPUT_SCHEMA
       },
+      pathToClaudeCodeExecutable: findClaudeExecutable(),
       // Don't load project CLAUDE.md - agent has its own instructions
     };
 
@@ -344,7 +378,8 @@ Reply with your structured output indicating ready_for_next: true when you're re
       outputFormat: {
         type: 'json_schema',
         schema: QUEUE_PROCESSOR_OUTPUT_SCHEMA
-      }
+      },
+      pathToClaudeCodeExecutable: findClaudeExecutable(),
     };
 
     try {
@@ -624,6 +659,16 @@ async function handleRequest(request) {
       });
 
     case 'notifications/initialized':
+      // Process any pending queue entries on startup
+      const projectRoot = getProjectRoot();
+      if (!queueProcessor) {
+        queueProcessor = new QueueProcessor(projectRoot);
+      }
+      setImmediate(() => {
+        queueProcessor.processQueue().catch(err => {
+          logError(AGENTS.MCP_SERVER, `Startup queue processing error: ${err.message}`);
+        });
+      });
       // This is a notification, no response needed
       return null;
 
