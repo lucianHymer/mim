@@ -50,6 +50,10 @@ declare class MimGame {
     private currentReviewIndex;
     constructor(callbacks?: GameCallbacks);
     /**
+     * Generate the audio status string showing music and SFX mode
+     */
+    private getAudioStatusString;
+    /**
      * Start the game
      */
     start(): Promise<void>;

@@ -57,6 +57,7 @@ import {
   type Tileset,
 } from './tileset.js';
 import { getTitleArt } from './title-screen.js';
+import { cycleMusicMode, toggleSfx, getMusicMode, isSfxEnabled, startMusic, stopMusic, playSfx } from '../sound.js';
 
 // ============================================================================
 // Types
@@ -610,6 +611,32 @@ class MimGame {
   }
 
   /**
+   * Generate the audio status string showing music and SFX mode
+   */
+  private getAudioStatusString(): string {
+    const musicMode = getMusicMode();
+    const sfxOn = isSfxEnabled();
+
+    const cGreen = '\x1b[1;92m';   // bold bright green
+    const cYellow = '\x1b[1;93m';  // bold bright yellow
+    const cRed = '\x1b[1;91m';     // bold bright red
+    const DIM = '\x1b[38;2;140;140;140m';
+
+    const musicLabel =
+      musicMode === 'on'
+        ? `${DIM}m:music(${cGreen}ON${RESET}${DIM}/quiet/off)${RESET}`
+        : musicMode === 'quiet'
+          ? `${DIM}m:music(on/${cYellow}QUIET${RESET}${DIM}/off)${RESET}`
+          : `${DIM}m:music(on/quiet/${cRed}OFF${RESET}${DIM})${RESET}`;
+
+    const sfxLabel = sfxOn
+      ? `${DIM}s:sfx(${cGreen}ON${RESET}${DIM}/off)${RESET}`
+      : `${DIM}s:sfx(on/${cRed}OFF${RESET}${DIM})${RESET}`;
+
+    return `${musicLabel}  ${sfxLabel}`;
+  }
+
+  /**
    * Start the game
    */
   async start(): Promise<void> {
@@ -699,6 +726,7 @@ class MimGame {
   stop(): void {
     if (!this.isRunning) return;
 
+    stopMusic();
     this.stopAnimation();
     stopAnimationLoop();
     this.cleanupSprites();
@@ -727,6 +755,7 @@ class MimGame {
 
       case 'CHARACTER_SELECT':
         term.clear();
+        startMusic();
         this.draw();
         break;
 
@@ -785,6 +814,19 @@ class MimGame {
 
       if (key === 'CTRL_Z') {
         this.suspendProcess();
+        return;
+      }
+
+      // Global audio controls
+      if (key === 'm' || key === 'M') {
+        cycleMusicMode();
+        this.draw();
+        return;
+      }
+
+      if (key === 's' || key === 'S') {
+        toggleSfx();
+        this.draw();
         return;
       }
 
@@ -1370,6 +1412,7 @@ class MimGame {
           (this.state.characterIndex - 1 + CHARACTER_TILES.length) % CHARACTER_TILES.length;
         this.state.selectedCharacter = CHARACTER_TILES[this.state.characterIndex];
         this.draw();
+        playSfx('menuLeft');
         break;
 
       case 'RIGHT':
@@ -1377,6 +1420,7 @@ class MimGame {
         this.state.characterIndex = (this.state.characterIndex + 1) % CHARACTER_TILES.length;
         this.state.selectedCharacter = CHARACTER_TILES[this.state.characterIndex];
         this.draw();
+        playSfx('menuRight');
         break;
 
       case 'UP':
@@ -1385,6 +1429,7 @@ class MimGame {
           (this.state.characterIndex - 4 + CHARACTER_TILES.length) % CHARACTER_TILES.length;
         this.state.selectedCharacter = CHARACTER_TILES[this.state.characterIndex];
         this.draw();
+        playSfx('menuLeft');
         break;
 
       case 'DOWN':
@@ -1392,9 +1437,11 @@ class MimGame {
         this.state.characterIndex = (this.state.characterIndex + 4) % CHARACTER_TILES.length;
         this.state.selectedCharacter = CHARACTER_TILES[this.state.characterIndex];
         this.draw();
+        playSfx('menuRight');
         break;
 
       case 'ENTER':
+        playSfx('menuSelect');
         // Confirm selection, transition to Bridge Approach
         if (this.callbacks.onCharacterSelected) {
           this.callbacks.onCharacterSelected(this.state.selectedCharacter);
@@ -1405,6 +1452,7 @@ class MimGame {
         break;
 
       case ' ': // Space bar - skip intro, go directly to Wellspring
+        playSfx('menuSelect');
         if (this.callbacks.onCharacterSelected) {
           this.callbacks.onCharacterSelected(this.state.selectedCharacter);
         }
@@ -1814,12 +1862,15 @@ class MimGame {
     term.moveTo(promptX, promptY);
     process.stdout.write(`${COLORS.dim}${prompt}${RESET}`);
 
-    // Controls hint at bottom
-    const controls = '[Ctrl+C] Quit   [Ctrl+Z] Suspend';
-    const controlsX = Math.max(1, Math.floor((layout.width - controls.length) / 2));
+    // Controls hint at bottom with audio status
+    const audioStatus = this.getAudioStatusString();
+    const controls = `[Ctrl+C] Quit   [Ctrl+Z] Suspend  ${COLORS.dim}·${RESET}  ${audioStatus}`;
+    // Estimate visible length (controls text + separator + ~40 chars for audio status)
+    const visibleLength = 36 + 3 + 40;
+    const controlsX = Math.max(1, Math.floor((layout.width - visibleLength) / 2));
     const controlsY = promptY + 2;
     term.moveTo(controlsX, controlsY);
-    process.stdout.write(`${COLORS.dim}${controls}${RESET}`);
+    process.stdout.write(`${COLORS.dim}[Ctrl+C] Quit   [Ctrl+Z] Suspend${RESET}  ${COLORS.dim}·${RESET}  ${audioStatus}`);
   }
 
   private drawCharacterSelect(): void {
@@ -1871,9 +1922,10 @@ class MimGame {
     term.moveTo(Math.max(1, Math.floor((layout.width - instructions1.length) / 2)), instructionY);
     process.stdout.write(`${COLORS.dim}${instructions1}${COLORS.reset}`);
 
-    // Controls hint
-    const instructions2 = '[Ctrl+C] Quit   [Ctrl+Z] Suspend';
-    term.moveTo(Math.max(1, Math.floor((layout.width - instructions2.length) / 2)), instructionY + 1);
+    // Controls hint with integrated audio status
+    const audioStatus = this.getAudioStatusString();
+    const instructions2 = `[Ctrl+C] Quit   [Ctrl+Z] Suspend  ${COLORS.reset}·  ${audioStatus}`;
+    term.moveTo(Math.max(1, Math.floor((layout.width - 60) / 2)), instructionY + 1);
     process.stdout.write(`${COLORS.dim}${instructions2}${COLORS.reset}`);
   }
 
@@ -1955,10 +2007,11 @@ class MimGame {
       process.stdout.write(hintText);
     }
 
-    // Instructions at bottom
-    const instructionY = sceneOffsetY + sceneHeightChars + 3;
+    // Instructions at bottom (with audio status)
+    const audioStatus = this.getAudioStatusString();
+    const instructionY = sceneOffsetY + sceneHeightChars + 2;
     term.moveTo(sceneOffsetX, instructionY);
-    process.stdout.write(`${COLORS.dim}[ESC] Back to character select   [Ctrl+C] Quit${RESET}`);
+    process.stdout.write(`${COLORS.dim}[ESC] Back to character select   [Ctrl+C] Quit${RESET}  ·  ${audioStatus}`);
   }
 
   /**
@@ -2361,11 +2414,11 @@ class MimGame {
     if (this.state.guardianAnswered) {
       // No hint needed - crossing animation handles itself
     } else if (this.state.bridgeGuardianPhase === 'hopping') {
-      hintText = `${COLORS.dim}The guardian considers your response...${RESET}`;
+      hintText = `${COLORS.dim}The guardian considers your response...${RESET}  ·  ${this.getAudioStatusString()}`;
     } else if (this.state.otherInputActive) {
-      hintText = `${COLORS.dim}[ENTER] Submit  [ESC] Cancel  [Backspace] Delete${RESET}`;
+      hintText = `${COLORS.dim}[ENTER] Submit  [ESC] Cancel  [Backspace] Delete${RESET}  ·  ${this.getAudioStatusString()}`;
     } else {
-      hintText = `${COLORS.dim}[A-D] Answer  [O] Other  [ESC] Back  [Ctrl+C] Quit${RESET}`;
+      hintText = `${COLORS.dim}[A-D] Answer  [O] Other  [ESC] Back  [Ctrl+C] Quit${RESET}  ·  ${this.getAudioStatusString()}`;
     }
     if (hintText) {
       bufferLine(layout.tileArea.x, hintY, hintText);
@@ -2794,13 +2847,14 @@ class MimGame {
       y += 2;
     }
 
-    // Instructions at bottom
-    const instructionY = layout.chatArea.y + layout.chatArea.height - 2;
+    // Instructions at bottom (with integrated audio controls)
+    const instructionY = layout.chatArea.y + layout.chatArea.height - 1;
     term.moveTo(x, instructionY);
+    const audioStatus = this.getAudioStatusString();
     if (this.state.agentDone) {
-      process.stdout.write(`${COLORS.green}[ESC] Depart the Wellspring${COLORS.reset}`);
+      process.stdout.write(`${COLORS.green}[ESC] Depart the Wellspring${COLORS.reset}  ${COLORS.dim}·${COLORS.reset}  ${audioStatus}`);
     } else {
-      process.stdout.write(`${COLORS.dim}Watching the Wellspring work...  [Ctrl+C] Quit${COLORS.reset}`);
+      process.stdout.write(`${COLORS.dim}Watching the Wellspring work...  [Ctrl+C] Quit  ·${COLORS.reset}  ${audioStatus}`);
     }
   }
 

@@ -6,6 +6,8 @@
  * scripted (animated) movement patterns.
  */
 
+import { playSfx } from '../sound.js';
+
 /**
  * Animation state union type representing all possible sprite animations
  */
@@ -141,6 +143,7 @@ export class Sprite {
         this._position.col += 1;
         break;
     }
+    playSfx('footstep');
   }
 
   /**
@@ -203,6 +206,7 @@ export class Sprite {
    * @returns Promise that resolves when the spawn animation completes
    */
   async magicSpawn(): Promise<void> {
+    playSfx('magic');
     return new Promise<void>((resolve) => {
       this._animation = {
         type: 'magicSpawn',
@@ -223,6 +227,7 @@ export class Sprite {
    * @returns Promise that resolves when the despawn animation completes
    */
   async magicDespawn(): Promise<void> {
+    playSfx('magic');
     return new Promise<void>((resolve) => {
       this._animation = {
         type: 'magicDespawn',
@@ -244,6 +249,7 @@ export class Sprite {
    * @returns Promise that resolves when the transform animation completes
    */
   async magicTransform(toTile: number): Promise<void> {
+    playSfx('magic');
     return new Promise<void>((resolve) => {
       this._animation = {
         type: 'magicTransform',
@@ -401,8 +407,10 @@ export class Sprite {
       // Move one step toward target (prioritize row, then col)
       if (dRow !== 0) {
         this._position.row += dRow > 0 ? 1 : -1;
+        playSfx('footstep');
       } else if (dCol !== 0) {
         this._position.col += dCol > 0 ? 1 : -1;
+        playSfx('footstep');
       }
 
       // Check if we've reached the target after this step
@@ -428,6 +436,7 @@ export class Sprite {
       // Up phase complete, switch to down
       anim.elapsed -= hopFrameDuration;
       anim.frame = 1;
+      playSfx('jump');
     } else if (anim.frame === 1 && anim.elapsed >= hopFrameDuration) {
       // Down phase complete (landed)
       anim.elapsed -= hopFrameDuration;

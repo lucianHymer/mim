@@ -5,6 +5,7 @@
  * and indicator overlays. They support both controlled (user input) and
  * scripted (animated) movement patterns.
  */
+import { playSfx } from '../sound.js';
 /**
  * Sprite class for animated tile-based characters
  *
@@ -89,6 +90,7 @@ export class Sprite {
                 this._position.col += 1;
                 break;
         }
+        playSfx('footstep');
     }
     /**
      * Animates the sprite walking to the target position
@@ -145,6 +147,7 @@ export class Sprite {
      * @returns Promise that resolves when the spawn animation completes
      */
     async magicSpawn() {
+        playSfx('magic');
         return new Promise((resolve) => {
             this._animation = {
                 type: 'magicSpawn',
@@ -164,6 +167,7 @@ export class Sprite {
      * @returns Promise that resolves when the despawn animation completes
      */
     async magicDespawn() {
+        playSfx('magic');
         return new Promise((resolve) => {
             this._animation = {
                 type: 'magicDespawn',
@@ -184,6 +188,7 @@ export class Sprite {
      * @returns Promise that resolves when the transform animation completes
      */
     async magicTransform(toTile) {
+        playSfx('magic');
         return new Promise((resolve) => {
             this._animation = {
                 type: 'magicTransform',
@@ -326,9 +331,11 @@ export class Sprite {
             // Move one step toward target (prioritize row, then col)
             if (dRow !== 0) {
                 this._position.row += dRow > 0 ? 1 : -1;
+                playSfx('footstep');
             }
             else if (dCol !== 0) {
                 this._position.col += dCol > 0 ? 1 : -1;
+                playSfx('footstep');
             }
             // Check if we've reached the target after this step
             if (this._position.row === anim.target.row && this._position.col === anim.target.col) {
@@ -351,6 +358,7 @@ export class Sprite {
             // Up phase complete, switch to down
             anim.elapsed -= hopFrameDuration;
             anim.frame = 1;
+            playSfx('jump');
         }
         else if (anim.frame === 1 && anim.elapsed >= hopFrameDuration) {
             // Down phase complete (landed)
