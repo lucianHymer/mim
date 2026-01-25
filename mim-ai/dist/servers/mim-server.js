@@ -197,8 +197,8 @@ When conflicts are detected, write to .claude/knowledge/pending-review/{id}-{sub
   "id": "short-id",
   "subject": "brief-subject-slug",
   "type": "conflict",
-  "question": "A complete, self-contained question for the human. Include all context needed to decide - what the conflict is, current vs new state. Do NOT reference the options (they display separately). 2-4 sentences.",
-  "options": ["First option", "Second option", "Third option", "Fourth option"],
+  "question": "Explain the situation in 2-4 sentences. The user sees BOTH this AND the options list below, so do NOT repeat or list the options here - just explain what happened and what needs deciding.",
+  "options": ["First option", "Second option"],
   "knowledge_file": "category/filename.md",
   "agent_notes": "Technical details for applying the decision - file paths, what to change, etc. Human does NOT see this."
 }

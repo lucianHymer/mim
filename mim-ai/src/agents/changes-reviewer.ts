@@ -159,8 +159,8 @@ Field descriptions:
   - id: Unique short identifier for this review (6 alphanumeric characters)
   - subject: Brief title describing the issue (e.g., "API endpoint path changed")
   - type: Category of issue - "stale" (referenced items no longer exist), "conflict" (docs contradict code), "outdated" (partially correct but needs update)
-  - question: A COMPLETE, SELF-CONTAINED question for the human reviewer. This is the ONLY text the user sees before the options. It must include all context needed to make a decision - explain what the issue is, what the current state is, and what needs to be decided. Do NOT reference the options in the question text (they are displayed separately below). Write 2-4 sentences that fully explain the situation.
-  - options: Array of 2-4 resolution choices (e.g., ["Keep current documentation", "Update to match new code", "Remove this section"]). These are shown as numbered choices [1], [2], etc.
+  - question: A COMPLETE, SELF-CONTAINED explanation for the human reviewer. Explain what the issue is, what the current state is, and what needs to be decided. Write 2-4 sentences. IMPORTANT: The user sees BOTH the question AND the options list below it. Do NOT repeat or summarize the options in the question - they are displayed separately as [1], [2], etc. Just explain the situation, not the choices.
+  - options: Array of 2-4 resolution choices. These are shown to the user as numbered choices [1], [2], etc. directly below the question. Do NOT duplicate these in the question text.
   - knowledge_file: Path to the knowledge file that needs updating
   - agent_notes: Technical details for the agent that will apply the decision (file paths, line numbers, specific code references, what to change). The human does NOT see this - it's for the Wellspring agent to know HOW to implement the chosen option.
 - auto_fixed: Array of descriptions of issues you fixed automatically without needing review
