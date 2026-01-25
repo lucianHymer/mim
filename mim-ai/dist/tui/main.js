@@ -816,8 +816,8 @@ class MimGame {
         this.drawBridgeGuardianScene();
         // Small pause before hops
         await this.delay(200);
-        // Guardian hops 3 times to block the bridge dramatically
-        await this.guardianSprite.hop(3);
+        // Guardian hops twice to block the bridge dramatically
+        await this.guardianSprite.hop(2);
         this.drawBridgeGuardianScene();
         // Beat before player reacts
         await this.delay(300);
@@ -1978,8 +1978,8 @@ class MimGame {
                 }
             }
         }
-        // Buffer question modal overlay if in modal phase and should be shown
-        if (this.state.showQuestionModal && this.state.bridgeGuardianPhase === 'modal') {
+        // Buffer question modal overlay if in modal/intro phase and should be shown
+        if (this.state.showQuestionModal && (this.state.bridgeGuardianPhase === 'modal' || this.state.bridgeGuardianPhase === 'intro')) {
             buffer += this.buildQuestionModalBuffer(layout.tileArea.x, layout.tileArea.y, TILE_AREA_WIDTH);
         }
         // Buffer hint text at the bottom of the screen (above any status line)
