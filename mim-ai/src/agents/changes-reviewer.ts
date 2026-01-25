@@ -8,9 +8,9 @@ export const ReviewEntrySchema = z.object({
   subject: z.string(),
   type: z.enum(['stale', 'conflict', 'outdated']),
   question: z.string(),
-  context: z.string(),
   options: z.array(z.string()),
   knowledge_file: z.string(),
+  agent_notes: z.string(),
 });
 
 export const ChangesReviewerOutputSchema = z.object({
@@ -145,9 +145,9 @@ Your structured output must be valid JSON matching this schema:
       "subject": string,
       "type": "stale" | "conflict" | "outdated",
       "question": string,
-      "context": string,
       "options": string[],
-      "knowledge_file": string
+      "knowledge_file": string,
+      "agent_notes": string
     }
   ],
   "auto_fixed": string[],
@@ -159,10 +159,10 @@ Field descriptions:
   - id: Unique short identifier for this review (6 alphanumeric characters)
   - subject: Brief title describing the issue (e.g., "API endpoint path changed")
   - type: Category of issue - "stale" (referenced items no longer exist), "conflict" (docs contradict code), "outdated" (partially correct but needs update)
-  - question: Human-readable question about what to do (e.g., "The authentication flow documented uses OAuth but code now uses JWT. Which should we keep?")
-  - context: Detailed explanation of what you found, including file paths and specific discrepancies
-  - options: Array of 2-4 resolution choices (e.g., ["Keep current documentation", "Update to match new code", "Remove this section"])
+  - question: A COMPLETE, SELF-CONTAINED question for the human reviewer. This is the ONLY text the user sees before the options. It must include all context needed to make a decision - explain what the issue is, what the current state is, and what needs to be decided. Do NOT reference the options in the question text (they are displayed separately below). Write 2-4 sentences that fully explain the situation.
+  - options: Array of 2-4 resolution choices (e.g., ["Keep current documentation", "Update to match new code", "Remove this section"]). These are shown as numbered choices [1], [2], etc.
   - knowledge_file: Path to the knowledge file that needs updating
+  - agent_notes: Technical details for the agent that will apply the decision (file paths, line numbers, specific code references, what to change). The human does NOT see this - it's for the Wellspring agent to know HOW to implement the chosen option.
 - auto_fixed: Array of descriptions of issues you fixed automatically without needing review
 - done: True when you have finished analyzing all knowledge files
 

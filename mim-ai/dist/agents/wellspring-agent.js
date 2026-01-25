@@ -67,6 +67,7 @@ You will receive answered review entries. Each has:
 - answer: The user's chosen response
 - knowledge_file: The file that needs updating
 - type: 'stale', 'conflict', or 'outdated'
+- agent_notes: Technical details about what to change (file paths, line numbers, specific code references)
 
 ## Actions
 

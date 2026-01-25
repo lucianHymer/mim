@@ -361,6 +361,7 @@ class MimGame {
             showSignpostDialogue: false,
             bridgeGuardianPhase: 'modal',
             showQuestionModal: true,
+            questionScrollOffset: 0,
         };
         this.tracker = {
             lastTileFrame: -1,
@@ -384,6 +385,7 @@ class MimGame {
             bgLastOtherInputActive: false,
             bgLastOtherInputText: '',
             bgLastGuardianAnswered: false,
+            bgLastScrollOffset: 0,
         };
     }
     /**
@@ -698,6 +700,7 @@ class MimGame {
             return;
         this.saveReviewAnswer(review, answer);
         this.currentReviewIndex++;
+        this.state.questionScrollOffset = 0; // Reset scroll for new question
         // Check if all reviews answered
         if (this.currentReviewIndex >= this.pendingReviews.length) {
             this.state.guardianAnswered = true;
@@ -839,7 +842,7 @@ class MimGame {
         const layout = getLayout();
         // Calculate modal dimensions and position (same as buildQuestionModalBuffer)
         const dialogueWidthTiles = 6;
-        const dialogueHeightTiles = 3;
+        const dialogueHeightTiles = 5;
         const dialogueWidthChars = dialogueWidthTiles * TILE_SIZE;
         const sceneHeightChars = SCENE_HEIGHT * CHAR_HEIGHT;
         const dialogueHeightChars = dialogueHeightTiles * CHAR_HEIGHT;
@@ -855,13 +858,7 @@ class MimGame {
         for (const line of questionLines) {
             textLines.push(`${COLORS.yellow}${line}${RESET}`);
         }
-        if (review.context) {
-            textLines.push('');
-            const contextLines = this.wrapText(review.context, interiorWidth - 6);
-            for (const line of contextLines) {
-                textLines.push(`${COLORS.dim}${line}${RESET}`);
-            }
-        }
+        textLines.push('');
         textLines.push('');
         textLines.push(`${COLORS.cyan}Type your answer:${RESET}`);
         // This is the input line we need to update
@@ -872,8 +869,9 @@ class MimGame {
         textLines.push(inputLineText);
         // Calculate where this line appears in the box
         const boxHeight = CHAR_HEIGHT * dialogueHeightTiles;
-        const interiorStartRow = 2;
-        const interiorEndRow = boxHeight - 3;
+        // Start text after top border tile (CHAR_HEIGHT rows), add 1 for padding
+        const interiorStartRow = CHAR_HEIGHT + 1;
+        const interiorEndRow = boxHeight - CHAR_HEIGHT - 1;
         const interiorHeight = interiorEndRow - interiorStartRow + 1;
         const textStartOffset = interiorStartRow + Math.max(0, Math.floor((interiorHeight - textLines.length) / 2));
         // The input line is the last line in textLines
@@ -1122,12 +1120,12 @@ class MimGame {
                     logError(AGENTS.TUI, `Transition error: ${err.message}`);
                 });
                 break;
-            case ' ': // Space bar - skip intro, go directly to Wellspring
+            case ' ': // Space bar - skip intro, go to Bridge Guardian
                 playSfx('menuSelect');
                 if (this.callbacks.onCharacterSelected) {
                     this.callbacks.onCharacterSelected(this.state.selectedCharacter);
                 }
-                this.transitionTo('WELLSPRING').catch((err) => {
+                this.transitionTo('BRIDGE_GUARDIAN').catch((err) => {
                     logError(AGENTS.TUI, `Transition error: ${err.message}`);
                 });
                 break;
@@ -1289,26 +1287,22 @@ class MimGame {
                     this.crossBridge();
                 }
                 break;
-            case 'a':
-            case 'A':
+            case '1':
                 if (review && review.options.length > 0) {
                     this.answerCurrentReview(review.options[0]);
                 }
                 break;
-            case 'b':
-            case 'B':
+            case '2':
                 if (review && review.options.length > 1) {
                     this.answerCurrentReview(review.options[1]);
                 }
                 break;
-            case 'c':
-            case 'C':
+            case '3':
                 if (review && review.options.length > 2) {
                     this.answerCurrentReview(review.options[2]);
                 }
                 break;
-            case 'd':
-            case 'D':
+            case '4':
                 if (review && review.options.length > 3) {
                     this.answerCurrentReview(review.options[3]);
                 }
@@ -1321,6 +1315,18 @@ class MimGame {
                     this.state.otherInputText = '';
                     this.fullDraw(); // Redraw to show input field
                 }
+                break;
+            case 'UP':
+                // Scroll up in question modal
+                if (this.state.questionScrollOffset > 0) {
+                    this.state.questionScrollOffset--;
+                    this.fullDraw();
+                }
+                break;
+            case 'DOWN':
+                // Scroll down in question modal
+                this.state.questionScrollOffset++;
+                this.fullDraw();
                 break;
             case 'ESCAPE':
                 this.transitionTo('CHARACTER_SELECT').catch((err) => {
@@ -1434,6 +1440,7 @@ class MimGame {
         this.tracker.bgLastOtherInputActive = false;
         this.tracker.bgLastOtherInputText = '';
         this.tracker.bgLastGuardianAnswered = false;
+        this.tracker.bgLastScrollOffset = 0;
         term.clear();
         this.draw();
     }
@@ -1878,6 +1885,7 @@ class MimGame {
         const otherInputActive = this.state.otherInputActive;
         const otherInputText = this.state.otherInputText;
         const guardianAnswered = this.state.guardianAnswered;
+        const scrollOffset = this.state.questionScrollOffset;
         // Get animation frame for hop detection (changes during hop even if position doesn't)
         const guardianAnimFrame = this.guardianSprite?.animation?.type === 'hopping'
             ? this.guardianSprite.animation.frame
@@ -1896,7 +1904,8 @@ class MimGame {
             reviewIndex === this.tracker.bgLastReviewIndex &&
             otherInputActive === this.tracker.bgLastOtherInputActive &&
             otherInputText === this.tracker.bgLastOtherInputText &&
-            guardianAnswered === this.tracker.bgLastGuardianAnswered) {
+            guardianAnswered === this.tracker.bgLastGuardianAnswered &&
+            scrollOffset === this.tracker.bgLastScrollOffset) {
             return; // Nothing changed, skip redraw
         }
         // Update tracker after detecting change
@@ -1910,6 +1919,7 @@ class MimGame {
         this.tracker.bgLastOtherInputActive = otherInputActive;
         this.tracker.bgLastOtherInputText = otherInputText;
         this.tracker.bgLastGuardianAnswered = guardianAnswered;
+        this.tracker.bgLastScrollOffset = scrollOffset;
         const layout = getLayout();
         // === DOUBLE BUFFERING: Build entire frame into buffer, output once ===
         let buffer = '';
@@ -1959,8 +1969,8 @@ class MimGame {
         if (this.state.showQuestionModal && this.state.bridgeGuardianPhase === 'modal') {
             buffer += this.buildQuestionModalBuffer(layout.tileArea.x, layout.tileArea.y, TILE_AREA_WIDTH);
         }
-        // Buffer hint text below the scene
-        const hintY = layout.tileArea.y + TILE_AREA_HEIGHT + 1;
+        // Buffer hint text at the bottom of the screen (above any status line)
+        const hintY = layout.height - 2;
         bufferLine(layout.tileArea.x, hintY, ' '.repeat(TILE_AREA_WIDTH));
         let hintText = '';
         if (this.state.guardianAnswered) {
@@ -1992,9 +2002,9 @@ class MimGame {
         if (!this.state.tileset)
             return '';
         const review = this.getCurrentReview();
-        // Dialogue box is 6 tiles wide x 3 tiles tall for more content
+        // Dialogue box is 6 tiles wide x 5 tiles tall for more content
         const dialogueWidthTiles = 6;
-        const dialogueHeightTiles = 3;
+        const dialogueHeightTiles = 5;
         const dialogueWidthChars = dialogueWidthTiles * TILE_SIZE;
         // Extract dialogue tiles
         const topLeft = extractTile(this.state.tileset, BA_DIALOGUE_TILES.TOP_LEFT);
@@ -2061,19 +2071,17 @@ class MimGame {
             // Progress indicator
             textLines.push(`${COLORS.dim}Question ${this.currentReviewIndex + 1} of ${this.pendingReviews.length}${RESET}`);
             textLines.push('');
-            // Question text (wrapped)
+            // Category/subject header
+            if (review.subject) {
+                textLines.push(`${COLORS.cyan}${review.subject}${RESET}`);
+                textLines.push('');
+            }
+            // Question text (wrapped) - should be self-contained with all context needed
             const questionLines = this.wrapText(review.question, interiorWidth - 4);
             for (const line of questionLines) {
                 textLines.push(`${COLORS.yellow}${line}${RESET}`);
             }
-            // Context (if any, dimmed)
-            if (review.context) {
-                textLines.push('');
-                const contextLines = this.wrapText(review.context, interiorWidth - 6);
-                for (const line of contextLines) {
-                    textLines.push(`${COLORS.dim}${line}${RESET}`);
-                }
-            }
+            textLines.push('');
             textLines.push('');
             // Show text input or options
             if (this.state.otherInputActive) {
@@ -2084,10 +2092,10 @@ class MimGame {
                 textLines.push(`> ${displayText}\u2588`);
             }
             else {
-                // Show options [A] [B] [C] [D]
+                // Show options [1] [2] [3] [4]
                 for (let i = 0; i < review.options.length && i < 4; i++) {
-                    const letter = String.fromCharCode(65 + i); // A, B, C, D
-                    const optionLines = this.wrapText(`[${letter}] ${review.options[i]}`, interiorWidth - 4);
+                    const number = i + 1; // 1, 2, 3, 4
+                    const optionLines = this.wrapText(`[${number}] ${review.options[i]}`, interiorWidth - 4);
                     for (const line of optionLines) {
                         textLines.push(`${COLORS.cyan}${line}${RESET}`);
                     }
@@ -2107,17 +2115,29 @@ class MimGame {
             textLines.push('');
             textLines.push(`${COLORS.dim}Loading questions...${RESET}`);
         }
-        // Center text in the dialogue box
+        // Calculate scrollable area
         const boxHeight = CHAR_HEIGHT * dialogueHeightTiles;
-        const interiorStartRow = 2;
-        const interiorEndRow = boxHeight - 3;
+        // Start text after top border tile (CHAR_HEIGHT rows), add 1 for padding
+        const interiorStartRow = CHAR_HEIGHT + 1;
+        const interiorEndRow = boxHeight - CHAR_HEIGHT - 1;
         const interiorHeight = interiorEndRow - interiorStartRow + 1;
-        const textStartOffset = interiorStartRow + Math.max(0, Math.floor((interiorHeight - textLines.length) / 2));
-        // Overlay text onto the box
-        for (let i = 0; i < textLines.length; i++) {
-            const boxLineIndex = textStartOffset + i;
-            if (boxLineIndex >= interiorStartRow && boxLineIndex <= interiorEndRow && boxLineIndex < boxLines.length) {
-                let line = textLines[i];
+        // Use scrolling if content exceeds interior height
+        const needsScroll = textLines.length > interiorHeight;
+        const maxScrollOffset = Math.max(0, textLines.length - interiorHeight);
+        const scrollOffset = Math.min(this.state.questionScrollOffset, maxScrollOffset);
+        // Sync clamped value back to state so UP key works correctly at edges
+        if (this.state.questionScrollOffset !== scrollOffset) {
+            this.state.questionScrollOffset = scrollOffset;
+        }
+        // Add scroll indicators if needed
+        const canScrollUp = scrollOffset > 0;
+        const canScrollDown = scrollOffset < maxScrollOffset;
+        // Overlay text onto the box with scroll offset
+        for (let displayRow = 0; displayRow < interiorHeight; displayRow++) {
+            const textLineIndex = displayRow + scrollOffset;
+            const boxLineIndex = interiorStartRow + displayRow;
+            if (textLineIndex < textLines.length && boxLineIndex < boxLines.length) {
+                let line = textLines[textLineIndex];
                 const visibleLength = this.stripAnsi(line).length;
                 // Truncate if too long
                 if (visibleLength > interiorWidth - 2) {
@@ -2154,6 +2174,59 @@ class MimGame {
                     rightBorder = borders.right;
                 }
                 boxLines[boxLineIndex] = leftBorder + textWithBg + rightBorder;
+            }
+        }
+        // Add scroll indicators if content overflows
+        if (needsScroll) {
+            // Add up arrow indicator at top-right of interior
+            if (canScrollUp) {
+                const upIndicatorRow = interiorStartRow;
+                if (upIndicatorRow < boxLines.length) {
+                    const upArrow = `${COLORS.dim}▲ more${RESET}`;
+                    const upArrowVisible = ' ▲ more';
+                    const upPadding = interiorWidth - upArrowVisible.length;
+                    const upContent = ' '.repeat(upPadding) + upArrow;
+                    const upWithBg = this.wrapTextWithBg(upContent, textBgColor);
+                    const tileRowIdx = Math.floor(upIndicatorRow / CHAR_HEIGHT);
+                    const charRow = upIndicatorRow % CHAR_HEIGHT;
+                    let leftBorder;
+                    let rightBorder;
+                    if (tileRowIdx === 0) {
+                        leftBorder = tlRendered[charRow];
+                        rightBorder = trRendered[charRow];
+                    }
+                    else {
+                        const borders = middleRowBorders[charRow];
+                        leftBorder = borders.left;
+                        rightBorder = borders.right;
+                    }
+                    boxLines[upIndicatorRow] = leftBorder + upWithBg + rightBorder;
+                }
+            }
+            // Add down arrow indicator at bottom-right of interior
+            if (canScrollDown) {
+                const downIndicatorRow = interiorEndRow;
+                if (downIndicatorRow < boxLines.length) {
+                    const downArrow = `${COLORS.dim}▼ more${RESET}`;
+                    const downArrowVisible = ' ▼ more';
+                    const downPadding = interiorWidth - downArrowVisible.length;
+                    const downContent = ' '.repeat(downPadding) + downArrow;
+                    const downWithBg = this.wrapTextWithBg(downContent, textBgColor);
+                    const tileRowIdx = Math.floor(downIndicatorRow / CHAR_HEIGHT);
+                    const charRow = downIndicatorRow % CHAR_HEIGHT;
+                    let leftBorder;
+                    let rightBorder;
+                    if (tileRowIdx === dialogueHeightTiles - 1) {
+                        leftBorder = blRendered[charRow];
+                        rightBorder = brRendered[charRow];
+                    }
+                    else {
+                        const borders = middleRowBorders[charRow];
+                        leftBorder = borders.left;
+                        rightBorder = borders.right;
+                    }
+                    boxLines[downIndicatorRow] = leftBorder + downWithBg + rightBorder;
+                }
             }
         }
         // Position dialogue box centered on the scene
@@ -2273,33 +2346,41 @@ class MimGame {
      * Wrap text to fit within a given width
      */
     wrapText(text, width) {
-        const words = text.split(' ');
-        const lines = [];
-        let currentLine = '';
-        for (const word of words) {
-            if (word.length > width) {
-                // Break long words
-                if (currentLine) {
-                    lines.push(currentLine);
-                    currentLine = '';
+        // First split by newlines, then wrap each paragraph
+        const paragraphs = text.split(/\n/);
+        const allLines = [];
+        for (const paragraph of paragraphs) {
+            const words = paragraph.split(' ');
+            let currentLine = '';
+            for (const word of words) {
+                if (word.length > width) {
+                    // Break long words
+                    if (currentLine) {
+                        allLines.push(currentLine);
+                        currentLine = '';
+                    }
+                    for (let i = 0; i < word.length; i += width) {
+                        allLines.push(word.substring(i, i + width));
+                    }
+                    continue;
                 }
-                for (let i = 0; i < word.length; i += width) {
-                    lines.push(word.substring(i, i + width));
+                if (currentLine.length + word.length + 1 <= width) {
+                    currentLine += (currentLine ? ' ' : '') + word;
                 }
-                continue;
+                else {
+                    if (currentLine)
+                        allLines.push(currentLine);
+                    currentLine = word;
+                }
             }
-            if (currentLine.length + word.length + 1 <= width) {
-                currentLine += (currentLine ? ' ' : '') + word;
-            }
-            else {
-                if (currentLine)
-                    lines.push(currentLine);
-                currentLine = word;
+            if (currentLine)
+                allLines.push(currentLine);
+            // If paragraph was empty, add empty line to preserve the newline
+            if (paragraph === '' && allLines.length > 0) {
+                allLines.push('');
             }
         }
-        if (currentLine)
-            lines.push(currentLine);
-        return lines.length > 0 ? lines : [''];
+        return allLines.length > 0 ? allLines : [''];
     }
     drawWellspringPanel(layout) {
         const x = layout.chatArea.x;

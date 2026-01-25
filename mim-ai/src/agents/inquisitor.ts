@@ -32,8 +32,9 @@ export const InquisitorOutputSchema = z.object({
     description: z.string().describe('What is wrong or outdated'),
     severity: z.enum(['auto_fix', 'needs_review']).describe('Whether this can be auto-fixed'),
     suggested_fix: z.string().optional().describe('How to fix if auto_fix'),
-    review_question: z.string().optional().describe('Question for human if needs_review'),
+    review_question: z.string().optional().describe('Self-contained question for human if needs_review. Include ALL context needed to decide - do not reference options.'),
     review_options: z.array(z.string()).optional().describe('Options for human review'),
+    review_agent_notes: z.string().optional().describe('Technical details for the agent applying the decision (file paths, line numbers, what to change). Human does NOT see this.'),
   }).optional(),
 
   done: z.boolean().describe('Always true when investigation is complete'),

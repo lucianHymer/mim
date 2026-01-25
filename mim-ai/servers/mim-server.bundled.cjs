@@ -25305,10 +25305,10 @@ When conflicts are detected, write to .claude/knowledge/pending-review/{id}-{sub
   "id": "short-id",
   "subject": "brief-subject-slug",
   "type": "conflict",
-  "question": "Human-readable question about the conflict",
+  "question": "A complete, self-contained question for the human. Include all context needed to decide - what the conflict is, current vs new state. Do NOT reference the options (they display separately). 2-4 sentences.",
   "options": ["First option", "Second option", "Third option", "Fourth option"],
-  "context": "Details about what conflicted and where",
-  "knowledge_file": "category/filename.md"
+  "knowledge_file": "category/filename.md",
+  "agent_notes": "Technical details for applying the decision - file paths, what to change, etc. Human does NOT see this."
 }
 
 ## File Organization

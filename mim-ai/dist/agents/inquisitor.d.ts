@@ -43,18 +43,21 @@ export declare const InquisitorOutputSchema: z.ZodObject<{
         suggested_fix: z.ZodOptional<z.ZodString>;
         review_question: z.ZodOptional<z.ZodString>;
         review_options: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+        review_agent_notes: z.ZodOptional<z.ZodString>;
     }, "strip", z.ZodTypeAny, {
         description: string;
         severity: "auto_fix" | "needs_review";
         suggested_fix?: string | undefined;
         review_question?: string | undefined;
         review_options?: string[] | undefined;
+        review_agent_notes?: string | undefined;
     }, {
         description: string;
         severity: "auto_fix" | "needs_review";
         suggested_fix?: string | undefined;
         review_question?: string | undefined;
         review_options?: string[] | undefined;
+        review_agent_notes?: string | undefined;
     }>>;
     done: z.ZodBoolean;
 }, "strip", z.ZodTypeAny, {
@@ -78,6 +81,7 @@ export declare const InquisitorOutputSchema: z.ZodObject<{
         suggested_fix?: string | undefined;
         review_question?: string | undefined;
         review_options?: string[] | undefined;
+        review_agent_notes?: string | undefined;
     } | undefined;
 }, {
     done: boolean;
@@ -100,6 +104,7 @@ export declare const InquisitorOutputSchema: z.ZodObject<{
         suggested_fix?: string | undefined;
         review_question?: string | undefined;
         review_options?: string[] | undefined;
+        review_agent_notes?: string | undefined;
     } | undefined;
 }>;
 export type InquisitorOutput = z.infer<typeof InquisitorOutputSchema>;
