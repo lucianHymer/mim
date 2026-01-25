@@ -506,11 +506,11 @@ class MimGame {
         switch (screen) {
             case 'TITLE':
                 term.clear();
+                startMusic();
                 this.draw();
                 break;
             case 'CHARACTER_SELECT':
                 term.clear();
-                startMusic();
                 this.draw();
                 break;
             case 'BRIDGE_APPROACH':
@@ -567,12 +567,12 @@ class MimGame {
             // Global audio controls
             if (key === 'm' || key === 'M') {
                 cycleMusicMode();
-                this.draw();
+                this.fullDraw();
                 return;
             }
             if (key === 's' || key === 'S') {
                 toggleSfx();
-                this.draw();
+                this.fullDraw();
                 return;
             }
             // Screen-specific input handling
