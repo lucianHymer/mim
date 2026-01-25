@@ -13,5 +13,6 @@
       "command": "node",
       "args": ["${CLAUDE_PLUGIN_ROOT}/servers/mim-server.bundled.cjs"]
     }
-  }
+  },
+  "hooks": "./hooks/mim-hooks.json"
 }

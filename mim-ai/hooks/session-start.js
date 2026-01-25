@@ -3,8 +3,7 @@
 /**
  * Session Start Hook for Mim
  *
- * Checks if knowledge analysis is needed based on git commits.
- * If HEAD has changed since last analysis, notifies the user.
+ * Ensures knowledge structure exists and checks if analysis is needed.
  */
 
 import { execSync, spawn } from 'node:child_process';
@@ -16,9 +15,23 @@ import { dirname } from 'node:path';
 const KNOWLEDGE_DIR = '.claude/knowledge';
 const LAST_ANALYSIS_FILE = path.join(KNOWLEDGE_DIR, '.last-analysis');
 const PENDING_DIR = path.join(KNOWLEDGE_DIR, 'pending-review');
-const INSTRUCTIONS_FILE = path.join(KNOWLEDGE_DIR, 'INSTRUCTIONS.md');
-const KNOWLEDGE_MAP_CLAUDE = path.join(KNOWLEDGE_DIR, 'KNOWLEDGE_MAP_CLAUDE.md');
-const KNOWLEDGE_MAP = path.join(KNOWLEDGE_DIR, 'KNOWLEDGE_MAP.md');
+
+function runMimInit() {
+  try {
+    // Run mim init silently - it's idempotent
+    execSync('mim init', { stdio: 'pipe', encoding: 'utf-8' });
+  } catch {
+    // mim command might not be in PATH, try via npx or direct
+    try {
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = dirname(__filename);
+      const mimBin = path.join(__dirname, '..', 'bin', 'mim.js');
+      execSync(`node ${mimBin} init`, { stdio: 'pipe', encoding: 'utf-8' });
+    } catch {
+      // Silently fail - structure may already exist
+    }
+  }
+}
 
 function spawnBackgroundAnalysis() {
   const __filename = fileURLToPath(import.meta.url);
@@ -71,63 +84,6 @@ function countPendingReviews() {
   }
 }
 
-/**
- * Check if knowledge structure is properly initialized
- * Returns: { initialized: boolean, missing: string[] }
- */
-function checkKnowledgeStructure() {
-  const cwd = process.cwd();
-  const requiredFiles = [
-    INSTRUCTIONS_FILE,
-    KNOWLEDGE_MAP_CLAUDE,
-    KNOWLEDGE_MAP,
-  ];
-
-  const missing = [];
-
-  // Check base directory
-  if (!fs.existsSync(path.join(cwd, KNOWLEDGE_DIR))) {
-    return { initialized: false, missing: [KNOWLEDGE_DIR] };
-  }
-
-  // Check required files
-  for (const file of requiredFiles) {
-    if (!fs.existsSync(path.join(cwd, file))) {
-      missing.push(file);
-    }
-  }
-
-  return {
-    initialized: missing.length === 0,
-    missing
-  };
-}
-
-/**
- * Check if CLAUDE.md has required @ references
- */
-function checkClaudeMdReferences() {
-  const cwd = process.cwd();
-  const claudeMdPath = path.join(cwd, 'CLAUDE.md');
-
-  if (!fs.existsSync(claudeMdPath)) {
-    return { configured: false, missing: ['CLAUDE.md does not exist'] };
-  }
-
-  const content = fs.readFileSync(claudeMdPath, 'utf-8');
-  const requiredRefs = [
-    '@.claude/knowledge/INSTRUCTIONS.md',
-    '@.claude/knowledge/KNOWLEDGE_MAP_CLAUDE.md',
-  ];
-
-  const missing = requiredRefs.filter(ref => !content.includes(ref));
-
-  return {
-    configured: missing.length === 0,
-    missing
-  };
-}
-
 async function main() {
   const currentHead = getCurrentHead();
   if (!currentHead) {
@@ -135,25 +91,8 @@ async function main() {
     return;
   }
 
-  // Check if knowledge structure is initialized
-  const structureCheck = checkKnowledgeStructure();
-  const claudeMdCheck = checkClaudeMdReferences();
-
-  if (!structureCheck.initialized || !claudeMdCheck.configured) {
-    console.log('\n📜 Mím knowledge structure needs initialization.');
-    console.log('   Run "mim init" to set up persistent memory for this project.\n');
-
-    if (!structureCheck.initialized) {
-      console.log('   Missing structure:');
-      structureCheck.missing.forEach(m => console.log(`     - ${m}`));
-    }
-    if (!claudeMdCheck.configured) {
-      console.log('   Missing CLAUDE.md references:');
-      claudeMdCheck.missing.forEach(m => console.log(`     - ${m}`));
-    }
-    console.log('');
-    return;
-  }
+  // Ensure knowledge structure exists (idempotent)
+  runMimInit();
 
   const lastAnalysis = readLastAnalysis();
   const pendingCount = countPendingReviews();
