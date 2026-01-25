@@ -1105,15 +1105,22 @@ class MimGame {
     await this.guardianSprite.walk({ row: 2, col: 3 });
     this.drawBridgeGuardianScene();
 
-    // Small pause before hop
+    // Small pause before hops
     await this.delay(200);
 
-    // Guardian hops once to announce presence
-    await this.guardianSprite.hop(1);
+    // Guardian hops 3 times to block the bridge dramatically
+    await this.guardianSprite.hop(3);
     this.drawBridgeGuardianScene();
 
-    // Pause after hop before showing question
-    await this.delay(400);
+    // Beat before player reacts
+    await this.delay(300);
+
+    // Player shows alert/surprised reaction
+    this.humanSprite.intrigued(800); // Don't await - let it run while we continue
+    this.drawBridgeGuardianScene();
+
+    // Pause to see the alert before showing question
+    await this.delay(500);
 
     // Now show the question modal
     this.state.bridgeGuardianPhase = 'modal';
