@@ -6,12 +6,17 @@ Mím implements a game loop with 5 screens (TITLE, CHARACTER_SELECT, BRIDGE_APPR
 
 ## Game State Machine
 
-**Class:** MimGame (src/tui/main.ts, lines 547-3048)
+**Class:** MimGame (src/tui/main.ts)
 
 ### State Properties
 - `currentScreen`, `tileset`, `selectedCharacter`, `characterIndex`
 - `messages`, `guardianAnswered`, `agentProcessing`, `agentDone`
 - `textInputMode`
+- `answeredReviews` - Reviews with user decisions ready for Mímir to apply
+- `wellspringMode` - INSERT/SCROLL mode toggle: INSERT for typing messages, SCROLL for navigating message history
+- `wellspringInputBuffer`, `wellspringCursorPosition` - Text input handling for Wellspring chat
+- `currentTool`, `recentTools`, `toolCountSinceLastMessage` - Tool usage tracking for agent activity
+- `showToolIndicator`, `lastToolTime` - UI indicators for agent tool activity
 
 ### Performance Tracking
 - Tracker for minimal redraws: `lastTileFrame`, `lastMessageCount`, `lastScreen`
@@ -21,14 +26,20 @@ Mím implements a game loop with 5 screens (TITLE, CHARACTER_SELECT, BRIDGE_APPR
 ### Signal Handlers
 - SIGINT (Ctrl+C), SIGCONT (resume), SIGWINCH (resize), SIGHUP (reattach)
 
-## Chat/Info Panel
+## BRIDGE_GUARDIAN Question Modal
 
-- Position: x = TILE_AREA_WIDTH + 3, width = Math.max(40, terminal_width - x - 1)
-- Content varies by screen:
-  - **BRIDGE_GUARDIAN**: Questions, options, context, input mode UI
-  - **WELLSPRING**: Status, agent messages, processing indicator
+- Modal dialog overlay for answering review questions
+- Displays: question text, numbered options [1], [2], etc., "Other" text input option
+- Input modes: NORMAL (select option by number), TEXT (free-form response)
+- Color coding: yellow (questions), green (selected option), dim (hints)
+
+## WELLSPRING Chat Panel
+
+- Position: Right side panel at x = TILE_AREA_WIDTH + 3, width = Math.max(40, terminal_width - x - 1)
+- Displays: Mímir agent messages, user messages, processing indicator, tool activity
 - Text wrapping at panel width
-- Color coding: yellow (questions), cyan (options), green (agent), dim (hints)
+- Color coding: cyan (Mímir messages), green (You: user messages), dim (status/hints)
+- Scrollable message history with INSERT/SCROLL mode toggle
 
 ## Sprite System
 
@@ -37,6 +48,8 @@ Reuses Arbiter patterns:
 - Same indicators (alert, chat)
 - Controlled vs scripted movement
 - Registered with animation loop: `registerSprite`, `unregisterSprite`
+
+**Note:** Magic animation types (magicSpawn, magicDespawn, magicTransform) are available patterns inherited from Arbiter but not currently active in the Mím game. They remain in the codebase for potential future use.
 
 ## Agent Integration
 

@@ -468,6 +468,7 @@ function processInquisitorResult(result: InquisitorResult): ProcessResult {
           "Remove this entry",
         ],
         knowledge_file: `${result.entry.category}/${result.entry.file}`,
+        agent_notes: output.issue.review_agent_notes || '',
       };
       // Write immediately - don't wait for other inquisitors
       writePendingReview(review);

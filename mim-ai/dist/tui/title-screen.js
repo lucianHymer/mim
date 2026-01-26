@@ -9,15 +9,15 @@ import termKit from 'terminal-kit';
 // Color Palette (256-color ANSI) - White to Purple gradient
 // ============================================================================
 const MIM_COLORS = [
-    '\x1b[38;5;219m', // Line 1: Light pink
-    '\x1b[38;5;213m', // Line 2: Pink
-    '\x1b[38;5;177m', // Line 3: Light magenta
-    '\x1b[38;5;141m', // Line 4: Lavender
-    '\x1b[38;5;135m', // Line 5: Medium purple
-    '\x1b[38;5;99m', // Line 6: Purple
-    '\x1b[38;5;93m', // Line 7: Deep purple
-    '\x1b[38;5;57m', // Line 8: Dark violet
-    '\x1b[38;5;54m', // Line 9: Deep violet
+    '\x1b[1;38;5;219m', // Line 1: Light pink (bold)
+    '\x1b[1;38;5;213m', // Line 2: Pink (bold)
+    '\x1b[1;38;5;177m', // Line 3: Light magenta (bold)
+    '\x1b[1;38;5;141m', // Line 4: Lavender (bold)
+    '\x1b[1;38;5;135m', // Line 5: Medium purple (bold)
+    '\x1b[1;38;5;99m', // Line 6: Purple (bold)
+    '\x1b[1;38;5;93m', // Line 7: Deep purple (bold)
+    '\x1b[1;38;5;57m', // Line 8: Dark violet (bold)
+    '\x1b[1;38;5;54m', // Line 9: Deep violet (bold)
 ];
 const RESET = '\x1b[0m';
 // ============================================================================

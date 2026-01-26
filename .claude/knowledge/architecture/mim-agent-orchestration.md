@@ -7,10 +7,10 @@ MIM v2 implements a sophisticated sequential agent pipeline with hybrid executio
 Four components coordinate through a file-based queue system:
 1. **Queue Processor Agent** (MCP Server) - Processes remember() entries
 2. **Changes Detection Orchestrator** (SessionStart hook) - Normal code that spawns Inquisitor swarm
-3. **Inquisitor Swarm** (Parallel Sonnet subagents) - Research individual knowledge entries
-4. **Wellspring Agent** (TUI Game) - Applies user decisions to knowledge base
+3. **Inquisitor Swarm** (Parallel Haiku subagents) - Research individual knowledge entries
+4. **Mímir Agent** (Wellspring screen in TUI) - Applies user decisions to knowledge base
 
-Note: The Changes Detection stage is **not an agent** - it's regular JavaScript code (run-analysis.js) that orchestrates a swarm of parallel Inquisitor agents.
+Note: The Changes Detection stage is **not an agent** - it's regular TypeScript code (run-analysis.ts) that orchestrates a swarm of parallel Inquisitor agents.
 
 ## Key Coordination Pattern
 
@@ -32,11 +32,11 @@ The system uses **file-based asynchronous coordination** rather than agent-to-ag
 - Non-blocking: triggered via setImmediate() after remember() returns immediately to user
 
 ### Stage 2: Changes Detection (Orchestrator)
-- Triggered by SessionStart hook in Claude Code (run-analysis.js)
+- Triggered by SessionStart hook in Claude Code (run-analysis.ts)
 - Debounce logic checks `.claude/knowledge/.last-analysis` to avoid re-running on same commit
 - Reads all knowledge files and compares against current codebase state
 - Identifies stale (referenced items deleted), conflicting (docs contradict code), or outdated entries
-- Spawns Inquisitor subagents (Sonnet) to research individual knowledge entries in parallel
+- Spawns Inquisitor subagents (Haiku) to research individual knowledge entries in parallel
   - MAX_CONCURRENT_INQUISITORS = 5 for parallel execution
 - Creates pending-review JSON files for issues requiring human judgment
 - Auto-fixes minor issues (file path changes, typo corrections, etc.)
@@ -48,8 +48,8 @@ The system uses **file-based asynchronous coordination** rather than agent-to-ag
 - Answers saved back to the review JSON files
 - Game transitions to Wellspring scene when all reviews answered
 
-### Stage 4: Applying Decisions (Agent 3)
-- Wellspring Agent loads all answered review JSON files from disk
+### Stage 4: Applying Decisions (Mímir Agent)
+- At the Wellspring (final TUI screen), the Mímir agent loads all answered review JSON files from disk
 - Iterates through each answered review
 - For each decision:
   - Reads the knowledge file mentioned in the review
@@ -73,9 +73,10 @@ The system uses **file-based asynchronous coordination** rather than agent-to-ag
   - Each Inquisitor researches one knowledge entry
   - Results aggregated into reviews array
   - Parallel execution (MAX_CONCURRENT_INQUISITORS = 5) reduces analysis time
-- **Pattern**: Orchestrator code -> Multiple parallel Sonnet subagents
+- **Pattern**: Orchestrator code -> Multiple parallel Haiku subagents
 
-### Wellspring Agent (Agent 3)
+### Mímir Agent (at the Wellspring)
+- **Location**: The Wellspring is the final screen in the TUI game; Mímir is the agent you converse with there
 - **Lifetime**: Per-game session (runs until all reviews processed)
 - **Execution**: Sequential (one answered review at a time)
 - **Pattern**: Single session processing multiple items with ready_for_next signals
@@ -93,7 +94,7 @@ Auto-fixable issues from Inquisitors are written to pending-review JSON files wi
 
 ### Flow
 1. Inquisitor identifies issue with `severity: 'auto_fix'`
-2. run-analysis.js writes review JSON with `auto_apply: true`, `type: 'auto_fix'`
+2. run-analysis.ts writes review JSON with `auto_apply: true`, `type: 'auto_fix'`
 3. TUI's loadPendingReviews() skips auto_apply reviews (no user interaction needed)
 4. Wellspring's loadAnsweredReviews() includes auto_apply reviews
 5. Wellspring applies the fix from agent_notes without asking user
@@ -121,6 +122,10 @@ All agents use consistent schema structures:
 - Human doesn't see agent_notes (technical implementation details for applying decisions)
 - The `auto_apply` field (boolean) marks reviews that don't need user interaction
 
-**Known Bug:** In run-analysis.js, when creating reviews for `needs_review` cases (line ~346), the `agent_notes` field is not included, but it IS included for `auto_fix` cases (line ~332). This means user-facing reviews may lack the technical details needed by Wellspring to apply changes.
+**Data Flow for agent_notes:** The Inquisitor schema has two fields that flow to `agent_notes` in review files:
+- `suggested_fix` → used for `auto_fix` severity (line ~452 in run-analysis.ts)
+- `review_agent_notes` → used for `needs_review` severity (line ~471 in run-analysis.ts)
 
-**Related files:** mim-ai/src/servers/mim-server.ts, mim-ai/src/agents/changes-reviewer.ts, mim-ai/src/agents/inquisitor.ts, mim-ai/src/agents/wellspring-agent.ts, mim-ai/src/tui/main.ts, mim-ai/bin/mim.js, mim-ai/hooks/run-analysis.js
+Both are wired through so Wellspring receives technical implementation details for applying decisions.
+
+**Related files:** mim-ai/src/servers/mim-server.ts, mim-ai/src/agents/changes-reviewer.ts, mim-ai/src/agents/inquisitor.ts, mim-ai/src/agents/wellspring-agent.ts, mim-ai/src/tui/main.ts, mim-ai/bin/mim.js, mim-ai/src/hooks/run-analysis.ts
