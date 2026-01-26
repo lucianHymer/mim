@@ -22108,6 +22108,30 @@ import fs4 from "node:fs";
 import path3 from "node:path";
 import { execSync } from "node:child_process";
 var AGENT = AGENTS.CHANGES_REVIEWER;
+function findClaudeExecutable() {
+  if (process.env.CLAUDE_BINARY) {
+    return process.env.CLAUDE_BINARY;
+  }
+  try {
+    const claudePath = execSync("which claude", { encoding: "utf-8" }).trim();
+    if (claudePath && fs4.existsSync(claudePath)) {
+      return claudePath;
+    }
+  } catch {
+  }
+  const commonPaths = [
+    path3.join(process.env.HOME || "", ".local", "bin", "claude"),
+    "/usr/local/bin/claude",
+    "/usr/bin/claude"
+  ];
+  for (const p of commonPaths) {
+    if (fs4.existsSync(p)) {
+      return p;
+    }
+  }
+  throw new Error("Could not find Claude Code executable. Set CLAUDE_BINARY env var or ensure claude is in PATH.");
+}
+var CLAUDE_EXECUTABLE = findClaudeExecutable();
 var KNOWLEDGE_DIR2 = ".claude/knowledge";
 var PENDING_DIR2 = `${KNOWLEDGE_DIR2}/pending-review`;
 var CATEGORIES = ["architecture", "patterns", "dependencies", "workflows", "gotchas"];
@@ -22228,6 +22252,7 @@ Respond with:
       prompt,
       options: {
         model: "haiku",
+        pathToClaudeCodeExecutable: CLAUDE_EXECUTABLE,
         systemPrompt: "You are checking if a pending knowledge review is still relevant. Be brief and direct.",
         canUseTool: async (tool, input) => {
           const allowedTools = ["Read", "Glob", "Grep"];
@@ -22268,6 +22293,7 @@ Verify this knowledge against the actual codebase. Check if the referenced code 
       prompt,
       options: {
         model: "haiku",
+        pathToClaudeCodeExecutable: CLAUDE_EXECUTABLE,
         systemPrompt: INQUISITOR_SYSTEM_PROMPT,
         canUseTool: async (tool, input) => {
           const allowedTools = ["Read", "Glob", "Grep"];
