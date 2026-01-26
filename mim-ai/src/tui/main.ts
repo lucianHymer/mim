@@ -151,6 +151,9 @@ interface GameState {
   showQuestionModal: boolean;
   /** Scroll offset for question modal content */
   questionScrollOffset: number;
+
+  /** Scroll offset for wellspring chat panel */
+  wellspringScrollOffset: number;
 }
 
 /**
@@ -183,6 +186,12 @@ interface RedrawTracker {
   bgLastOtherInputText: string;
   bgLastGuardianAnswered: boolean;
   bgLastScrollOffset: number;
+
+  // Wellspring change detection
+  wsLastScrollOffset: number;
+  wsLastMessageCount: number;
+  wsLastAgentDone: boolean;
+  wsLastAgentProcessing: boolean;
 }
 
 /**
@@ -589,6 +598,7 @@ class MimGame {
       bridgeGuardianPhase: 'modal',
       showQuestionModal: true,
       questionScrollOffset: 0,
+      wellspringScrollOffset: 0,
     };
     this.tracker = {
       lastTileFrame: -1,
@@ -613,6 +623,10 @@ class MimGame {
       bgLastOtherInputText: '',
       bgLastGuardianAnswered: false,
       bgLastScrollOffset: 0,
+      wsLastScrollOffset: 0,
+      wsLastMessageCount: 0,
+      wsLastAgentDone: false,
+      wsLastAgentProcessing: false,
     };
   }
 
@@ -1702,6 +1716,12 @@ class MimGame {
   }
 
   private handleWellspringInput(key: string): void {
+    const layout = getLayout();
+    // Calculate visible chat height (minus header and footer)
+    const headerLines = 7; // Title + narrator + status
+    const footerLines = 2; // Instructions
+    const visibleHeight = layout.chatArea.height - headerLines - footerLines;
+
     switch (key) {
       case 'ESCAPE':
         // Only allow exit when agent is done
@@ -1711,6 +1731,60 @@ class MimGame {
           }
           this.stop();
         }
+        break;
+
+      case 'j':
+      case 'DOWN':
+        // Scroll down
+        this.state.wellspringScrollOffset++;
+        this.draw();
+        break;
+
+      case 'k':
+      case 'UP':
+        // Scroll up
+        this.state.wellspringScrollOffset = Math.max(0, this.state.wellspringScrollOffset - 1);
+        this.draw();
+        break;
+
+      case 'g':
+        // Scroll to top
+        this.state.wellspringScrollOffset = 0;
+        this.draw();
+        break;
+
+      case 'G':
+        // Scroll to bottom (will be clamped in draw)
+        this.state.wellspringScrollOffset = 999999;
+        this.draw();
+        break;
+
+      case 'b':
+      case 'CTRL_B':
+        // Page up
+        this.state.wellspringScrollOffset = Math.max(0, this.state.wellspringScrollOffset - visibleHeight);
+        this.draw();
+        break;
+
+      case 'f':
+      case 'CTRL_F':
+        // Page down
+        this.state.wellspringScrollOffset += visibleHeight;
+        this.draw();
+        break;
+
+      case 'u':
+      case 'CTRL_U':
+        // Half page up
+        this.state.wellspringScrollOffset = Math.max(0, this.state.wellspringScrollOffset - Math.floor(visibleHeight / 2));
+        this.draw();
+        break;
+
+      case 'd':
+      case 'CTRL_D':
+        // Half page down
+        this.state.wellspringScrollOffset += Math.floor(visibleHeight / 2);
+        this.draw();
         break;
     }
   }
@@ -1812,6 +1886,11 @@ class MimGame {
     this.tracker.bgLastOtherInputText = '';
     this.tracker.bgLastGuardianAnswered = false;
     this.tracker.bgLastScrollOffset = 0;
+    // Reset Wellspring trackers
+    this.tracker.wsLastScrollOffset = -1;
+    this.tracker.wsLastMessageCount = -1;
+    this.tracker.wsLastAgentDone = false;
+    this.tracker.wsLastAgentProcessing = false;
 
     term.clear();
     this.draw();
@@ -2918,6 +2997,34 @@ class MimGame {
     return allLines.length > 0 ? allLines : [''];
   }
 
+  /**
+   * Get all rendered chat lines for the wellspring panel
+   * Returns array of { text, color } for each line
+   */
+  private getWellspringChatLines(width: number): Array<{ text: string; color: string }> {
+    const renderedLines: Array<{ text: string; color: string }> = [];
+
+    // Render all messages with their colors
+    if (this.state.messages.length > 0) {
+      for (const msg of this.state.messages) {
+        const color = msg.speaker === 'mimir' ? COLORS.cyan : COLORS.green;
+        const prefix = msg.speaker === 'mimir' ? 'Mímir: ' : 'You: ';
+        const lines = this.wrapText(prefix + msg.text, width);
+        for (const line of lines) {
+          renderedLines.push({ text: line, color });
+        }
+        // Add blank line between messages
+        renderedLines.push({ text: '', color: COLORS.reset });
+      }
+    } else if (!this.state.agentDone && !this.state.agentProcessing) {
+      // Animated processing indicator when waiting to start
+      const dots = '.'.repeat((this.state.blinkCycle % 4) + 1);
+      renderedLines.push({ text: `Processing${dots}`, color: COLORS.dim });
+    }
+
+    return renderedLines;
+  }
+
   private drawWellspringPanel(layout: ReturnType<typeof getLayout>): void {
     const x = layout.chatArea.x;
     let y = layout.chatArea.y;
@@ -2954,30 +3061,45 @@ class MimGame {
     }
     y += 2;
 
-    // Display messages
-    if (this.state.messages.length > 0) {
-      for (const msg of this.state.messages) {
-        const color = msg.speaker === 'mimir' ? COLORS.cyan : COLORS.green;
-        const prefix = msg.speaker === 'mimir' ? 'Mímir: ' : 'You: ';
-        const lines = this.wrapText(prefix + msg.text, width);
-        for (const line of lines) {
-          term.moveTo(x, y);
-          process.stdout.write(`${color}${line}${COLORS.reset}`);
-          y += 1;
-        }
-        y += 1;
+    // Calculate visible area for messages (between header and footer)
+    const headerEndY = y;
+    const footerLines = 2; // Status bar + instructions
+    const instructionY = layout.chatArea.y + layout.chatArea.height - footerLines;
+    const visibleHeight = instructionY - headerEndY;
+
+    // Get all rendered chat lines
+    const renderedLines = this.getWellspringChatLines(width);
+
+    // Calculate max scroll and clamp
+    const SCROLL_PADDING = 5;
+    const maxScroll = Math.max(0, renderedLines.length - visibleHeight + SCROLL_PADDING);
+    this.state.wellspringScrollOffset = Math.min(Math.max(0, this.state.wellspringScrollOffset), maxScroll);
+
+    // Draw visible lines with scroll offset applied
+    for (let i = 0; i < visibleHeight; i++) {
+      const lineIdx = this.state.wellspringScrollOffset + i;
+      const lineY = headerEndY + i;
+
+      if (lineIdx < renderedLines.length) {
+        const { text, color } = renderedLines[lineIdx];
+        term.moveTo(x, lineY);
+        process.stdout.write(`${color}${text.substring(0, width)}${COLORS.reset}`);
       }
-    } else if (!this.state.agentDone && !this.state.agentProcessing) {
-      // Animated processing indicator when waiting to start
-      const dots = '.'.repeat((this.state.blinkCycle % 4) + 1);
-      term.moveTo(x, y);
-      process.stdout.write(`${COLORS.dim}Processing${dots}${COLORS.reset}`);
-      y += 2;
     }
 
+    // Status bar with scroll hints (above instructions)
+    const statusY = instructionY;
+    term.moveTo(x, statusY);
+    const canScrollUp = this.state.wellspringScrollOffset > 0;
+    const canScrollDown = this.state.wellspringScrollOffset < maxScroll;
+    const scrollHint = canScrollUp || canScrollDown
+      ? `${COLORS.dim}[j/k] scroll  [g/G] top/bottom  [u/d] half-page${COLORS.reset}`
+      : '';
+    process.stdout.write(scrollHint);
+
     // Instructions at bottom (with integrated audio controls)
-    const instructionY = layout.chatArea.y + layout.chatArea.height - 1;
-    term.moveTo(x, instructionY);
+    const bottomY = layout.chatArea.y + layout.chatArea.height - 1;
+    term.moveTo(x, bottomY);
     const audioStatus = this.getAudioStatusString();
     if (this.state.agentDone) {
       process.stdout.write(`${COLORS.green}[ESC] Depart the Wellspring${COLORS.reset}  ${COLORS.dim}·${COLORS.reset}  ${audioStatus}`);
@@ -3006,6 +3128,8 @@ class MimGame {
   addMessage(speaker: string, text: string): void {
     this.state.messages.push({ speaker, text });
     this.tracker.lastMessageCount = -1; // Force redraw
+    // Auto-scroll to bottom when new messages arrive
+    this.state.wellspringScrollOffset = 999999; // Will be clamped in draw
     this.draw();
   }
 

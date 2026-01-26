@@ -169,6 +169,11 @@ declare class MimGame {
      * Wrap text to fit within a given width
      */
     private wrapText;
+    /**
+     * Get all rendered chat lines for the wellspring panel
+     * Returns array of { text, color } for each line
+     */
+    private getWellspringChatLines;
     private drawWellspringPanel;
     private drawExitConfirmation;
     /**
