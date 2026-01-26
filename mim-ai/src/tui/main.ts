@@ -69,12 +69,13 @@ import { cycleMusicMode, toggleSfx, getMusicMode, isSfxEnabled, startMusic, stop
 interface PendingReview {
   id: string;
   subject: string;
-  type: 'stale' | 'conflict' | 'outdated';
+  type: 'stale' | 'conflict' | 'outdated' | 'auto_fix';
   question: string;
   options: string[];
   knowledge_file: string;
   agent_notes: string;  // Technical details for the agent applying the decision (not shown to user)
   answer?: string;
+  auto_apply?: boolean;  // If true, Wellspring applies without user interaction
 }
 
 const PENDING_REVIEW_DIR = '.claude/knowledge/pending-review';
@@ -945,8 +946,9 @@ class MimGame {
       for (const file of files) {
         const content = fs.readFileSync(path.join(dir, file), 'utf-8');
         const review = JSON.parse(content) as PendingReview;
-        // Only load unanswered reviews
-        if (!review.answer) {
+        // Only load unanswered reviews that need user interaction
+        // Skip auto_apply reviews - Wellspring handles those automatically
+        if (!review.answer && !review.auto_apply) {
           this.pendingReviews.push(review);
         }
       }
@@ -957,7 +959,8 @@ class MimGame {
 
   private saveReviewAnswer(review: PendingReview, answer: string): void {
     review.answer = answer;
-    const filename = `${review.id}-${review.subject.replace(/[^a-z0-9]/gi, '-')}.json`;
+    // Use same filename format as writePendingReview: {id}.json
+    const filename = `${review.id}.json`;
     const filepath = path.join(process.cwd(), PENDING_REVIEW_DIR, filename);
     fs.writeFileSync(filepath, JSON.stringify(review, null, 2));
   }

@@ -17,7 +17,9 @@ export function loadAnsweredReviews() {
         try {
             const content = fs.readFileSync(path.join(dir, file), 'utf-8');
             const review = JSON.parse(content);
-            if (review.answer) { // Only load answered reviews
+            // Load reviews that are either answered by user OR marked for auto-apply
+            if (review.answer || review.auto_apply) {
+                review._filename = file; // Track actual filename for deletion
                 reviews.push(review);
             }
         }
@@ -28,8 +30,10 @@ export function loadAnsweredReviews() {
     return reviews;
 }
 export function deleteReviewFile(review) {
-    const filename = `${review.id}-${review.subject.replace(/[^a-z0-9]/gi, '-').slice(0, 30)}.json`;
-    const filepath = path.join(process.cwd(), PENDING_DIR, filename);
+    const dir = path.join(process.cwd(), PENDING_DIR);
+    // Use tracked filename if available, otherwise construct from id
+    const filename = review._filename || `${review.id}.json`;
+    const filepath = path.join(dir, filename);
     if (fs.existsSync(filepath)) {
         fs.unlinkSync(filepath);
     }
@@ -62,26 +66,43 @@ Both maps have identical structure, just different link formats.
 
 ## Input
 
-You will receive answered review entries. Each has:
+You will receive review entries. There are two types:
+
+### Regular Reviews (need user answer)
 - question: What was asked
 - answer: The user's chosen response
 - knowledge_file: The file that needs updating
 - type: 'stale', 'conflict', or 'outdated'
-- agent_notes: Technical details about what to change (file paths, line numbers, specific code references)
+- agent_notes: Technical details about what to change
+
+### Auto-Fix Reviews (no user interaction needed)
+- auto_apply: true (this flag indicates automatic processing)
+- question: Describes what's being fixed
+- knowledge_file: The file that needs updating
+- type: 'auto_fix'
+- agent_notes: The specific fix to apply (use this directly)
 
 ## Actions
 
-For each answered review:
+### For regular reviews (has answer field):
 1. Read the current knowledge file
 2. Apply the user's decision:
    - If answer indicates deletion: Remove the problematic section
    - If answer indicates update: Modify the content accordingly
    - If answer indicates keeping current: Leave as-is
-3. **UPDATE BOTH KNOWLEDGE MAPS** if content was deleted or topics changed:
-   - Remove entries from KNOWLEDGE_MAP.md if content was deleted
-   - Remove entries from KNOWLEDGE_MAP_CLAUDE.md if content was deleted
-   - Update topic names if they changed
+3. Update both knowledge maps if content changed
 4. Report what you did
+
+### For auto-fix reviews (has auto_apply: true):
+1. Read the current knowledge file
+2. Apply the fix described in agent_notes directly (no user decision needed)
+3. Update both knowledge maps if content changed
+4. Report what you fixed
+
+**UPDATE BOTH KNOWLEDGE MAPS** if content was deleted or topics changed:
+- Remove entries from KNOWLEDGE_MAP.md if content was deleted
+- Remove entries from KNOWLEDGE_MAP_CLAUDE.md if content was deleted
+- Update topic names if they changed
 
 ## Style
 

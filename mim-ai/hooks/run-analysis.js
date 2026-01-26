@@ -248,7 +248,7 @@ Verify this knowledge against the actual codebase. Check if the referenced code 
     const session = query({
       prompt,
       options: {
-        model: 'sonnet',
+        model: 'haiku',
         systemPrompt: INQUISITOR_SYSTEM_PROMPT,
         canUseTool: async (tool, input) => {
           // Allow read-only tools and specific git commands
@@ -300,7 +300,64 @@ Verify this knowledge against the actual codebase. Check if the referenced code 
 }
 
 /**
+ * Process a single inquisitor result - write review immediately if needed
+ * Returns stats about what was done
+ */
+function processInquisitorResult(result) {
+  if (!result.success) {
+    logWarn(AGENT, `Inquisitor failed for ${result.entry.id}: ${result.error}`);
+    return { autoFix: null, review: null };
+  }
+
+  const output = result.output;
+  if (!output) return { autoFix: null, review: null };
+
+  // Skip valid entries
+  if (output.status === 'valid') {
+    logInfo(AGENT, `Entry ${output.entry_id} is valid`);
+    return { autoFix: null, review: null };
+  }
+
+  // Process issues
+  if (output.issue) {
+    if (output.issue.severity === 'auto_fix' && output.issue.suggested_fix) {
+      // Write autofix as a review with auto_apply flag - Wellspring will apply without asking
+      const review = {
+        id: result.entry.id,
+        subject: `${result.entry.topic} - auto-fix`,
+        type: 'auto_fix',
+        question: output.issue.description,  // Describes what's being fixed
+        options: [],  // No options for autofixes - one clear fix
+        knowledge_file: `${result.entry.category}/${result.entry.file}`,
+        agent_notes: output.issue.suggested_fix,  // The fix to apply
+        auto_apply: true,  // Flag for Wellspring to apply without user interaction
+      };
+      writePendingReview(review);
+      logInfo(AGENT, `Created auto-fix review: ${review.id} - ${review.subject}`);
+      return { autoFix: true, review };
+    } else if (output.issue.severity === 'needs_review') {
+      const review = {
+        id: result.entry.id,
+        subject: `${result.entry.topic} - ${output.status}`,
+        type: output.status,
+        question: output.issue.review_question || output.issue.description,
+        context: `Category: ${result.entry.category}\nFile: ${result.entry.file}\n\nFindings: ${output.findings.current_behavior}\n\nLocation recommendation: ${output.location_context.scope} - ${output.location_context.reason}`,
+        options: output.issue.review_options || ['Keep current documentation', 'Update to match code', 'Remove this entry'],
+        knowledge_file: `${result.entry.category}/${result.entry.file}`,
+      };
+      // Write immediately - don't wait for other inquisitors
+      writePendingReview(review);
+      logInfo(AGENT, `Created pending review: ${review.id} - ${review.subject}`);
+      return { autoFix: null, review };
+    }
+  }
+
+  return { autoFix: null, review: null };
+}
+
+/**
  * Run inquisitors in parallel with concurrency limit
+ * Writes reviews immediately as each completes (streaming, not batched)
  */
 async function runInquisitorSwarm(entries) {
   // Filter out entries that already have pending reviews
@@ -316,68 +373,35 @@ async function runInquisitorSwarm(entries) {
     logInfo(AGENT, `Filtered ${entries.length - entriesToProcess.length} entries with existing reviews`);
   }
 
-  const results = [];
+  const stats = { successful: 0, failed: 0, autoFixes: 0, reviews: 0 };
   const pending = [...entriesToProcess];
 
-  while (pending.length > 0 || results.length < entriesToProcess.length) {
+  while (pending.length > 0) {
     // Start new inquisitors up to concurrency limit
     const batch = pending.splice(0, MAX_CONCURRENT_INQUISITORS);
 
-    if (batch.length > 0) {
-      logInfo(AGENT, `Launching ${batch.length} inquisitors (${pending.length} remaining)`);
-      const batchResults = await Promise.all(batch.map(entry => runInquisitor(entry)));
-      results.push(...batchResults);
+    logInfo(AGENT, `Launching ${batch.length} inquisitors (${pending.length} remaining)`);
+
+    // Run batch and process each result immediately as it completes
+    const batchPromises = batch.map(async (entry) => {
+      const result = await runInquisitor(entry);
+      // Process and write immediately - don't wait for siblings
+      const { autoFix, review } = processInquisitorResult(result);
+      return { success: result.success, autoFix, review };
+    });
+
+    const batchResults = await Promise.all(batchPromises);
+
+    // Update stats
+    for (const result of batchResults) {
+      if (result.success) stats.successful++;
+      else stats.failed++;
+      if (result.autoFix) stats.autoFixes++;
+      if (result.review) stats.reviews++;
     }
   }
 
-  return results;
-}
-
-/**
- * Synthesize inquisitor results into reviews and auto-fixes
- */
-function synthesizeResults(results) {
-  const autoFixes = [];
-  const reviews = [];
-
-  for (const result of results) {
-    if (!result.success) {
-      logWarn(AGENT, `Inquisitor failed for ${result.entry.id}: ${result.error}`);
-      continue;
-    }
-
-    const output = result.output;
-    if (!output) continue;
-
-    // Skip valid entries
-    if (output.status === 'valid') {
-      logInfo(AGENT, `Entry ${output.entry_id} is valid`);
-      continue;
-    }
-
-    // Process issues
-    if (output.issue) {
-      if (output.issue.severity === 'auto_fix' && output.issue.suggested_fix) {
-        autoFixes.push({
-          entry_id: output.entry_id,
-          description: output.issue.description,
-          fix: output.issue.suggested_fix,
-        });
-      } else if (output.issue.severity === 'needs_review') {
-        reviews.push({
-          id: result.entry.id,
-          subject: `${result.entry.topic} - ${output.status}`,
-          type: output.status,
-          question: output.issue.review_question || output.issue.description,
-          context: `Category: ${result.entry.category}\nFile: ${result.entry.file}\n\nFindings: ${output.findings.current_behavior}\n\nLocation recommendation: ${output.location_context.scope} - ${output.location_context.reason}`,
-          options: output.issue.review_options || ['Keep current documentation', 'Update to match code', 'Remove this entry'],
-          knowledge_file: `${result.entry.category}/${result.entry.file}`,
-        });
-      }
-    }
-  }
-
-  return { autoFixes, reviews };
+  return stats;
 }
 
 /**
@@ -435,27 +459,10 @@ async function main() {
       }
       logInfo(AGENT, `Found ${entries.length} knowledge entries to investigate`);
 
-      // Run inquisitor swarm
-      const results = await runInquisitorSwarm(entries);
-      logInfo(AGENT, `Inquisitor swarm complete: ${results.filter(r => r.success).length}/${results.length} successful`);
-
-      // Synthesize results
-      const { autoFixes, reviews } = synthesizeResults(results);
-
-      // PHASE 3: Apply auto-fixes
-      for (const fix of autoFixes) {
-        logInfo(AGENT, `Auto-fix: ${fix.entry_id} - ${fix.description}`);
-        // Auto-fixes are logged but manual for now
-        // In future: could use Edit tool to apply them
-      }
-
-      // PHASE 4: Write new pending reviews
-      for (const review of reviews) {
-        writePendingReview(review);
-        logInfo(AGENT, `Created pending review: ${review.id} - ${review.subject}`);
-      }
-
-      logInfo(AGENT, `Analysis complete: ${autoFixes.length} auto-fixes, ${reviews.length} new reviews`);
+      // Run inquisitor swarm - reviews are written immediately as each completes
+      const stats = await runInquisitorSwarm(entries);
+      logInfo(AGENT, `Inquisitor swarm complete: ${stats.successful}/${stats.successful + stats.failed} successful`);
+      logInfo(AGENT, `Analysis complete: ${stats.autoFixes} auto-fixes, ${stats.reviews} new reviews`);
 
       // Update last analysis state
       writeLastAnalysis({

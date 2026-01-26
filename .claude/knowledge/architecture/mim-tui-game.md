@@ -2,53 +2,11 @@
 
 ## Overview
 
-Mím implements a simplified game loop with 3 screens (CHARACTER_SELECT, BRIDGE_GUARDIAN, WELLSPRING) based on Arbiter patterns but adapted for knowledge review workflow.
-
-## Core Screens
-
-### TitleScreen
-**File:** `/workspace/project/mim-ai/src/tui/title-screen.ts`
-
-- Gradient logo (pink→purple→violet) using diagonal row-weighted calculation (rowWeight=4)
-- Simpler implementation than Arbiter (uses 256-color palette, no fire effect)
-- Functions: `showTitleScreen()`, `printTitleArt()`, `getTitleArt()`
-- Not used as fullscreen state machine like Arbiter
-
-### CHARACTER_SELECT
-**Location:** main.ts
-
-- Reuses CharacterSelect rendering from Arbiter patterns
-- Shows 8 human characters with selection and focus overlay
-- Navigation: Arrow keys/hjkl, ENTER to select, SPACE to skip intro
-- Transitions to BRIDGE_GUARDIAN on ENTER, WELLSPRING on SPACE
-
-### BRIDGE_GUARDIAN
-**Location:** main.ts
-
-- 7×6 tile scene with bridge and chasm
-- Layout: Trees/grass left, Chasm middle (cols 2-4), Cobblestone right (cols 5-6)
-- Bridge tiles at (row 2, cols 3-4)
-- Sprites: humanSprite (col 1), guardianSprite (col 2)
-- Questions displayed in right panel (chat area)
-- Options: [A-D] for answers, [O] for custom text input
-- Text input mode with ENTER/ESC/BACKSPACE handling
-- Animations: guardian steps aside, player walks across bridge
-- Transitions to WELLSPRING after answering all questions
-
-### WELLSPRING
-**Location:** main.ts
-
-- 7×6 tile scene with water/cobblestone platform
-- Layout: Trees border, Cobblestones as platform, Water center
-- Sprites: humanSprite (enters at 2,0), odinSprite (1,6), mimSprite (3,3 - bubbles)
-- Animation: human walks to destination (4,3)
-- Runs Wellspring Agent to process answered reviews
-- Right panel shows agent messages and progress
-- Exit on ESC only when agent complete
+Mím implements a game loop with 5 screens (TITLE, CHARACTER_SELECT, BRIDGE_APPROACH, BRIDGE_GUARDIAN, WELLSPRING) based on Arbiter patterns but adapted for knowledge review workflow.
 
 ## Game State Machine
 
-**Class:** MimGame (main.ts, lines 366-1561)
+**Class:** MimGame (src/tui/main.ts, lines 547-3048)
 
 ### State Properties
 - `currentScreen`, `tileset`, `selectedCharacter`, `characterIndex`
@@ -62,17 +20,6 @@ Mím implements a simplified game loop with 3 screens (CHARACTER_SELECT, BRIDGE_
 
 ### Signal Handlers
 - SIGINT (Ctrl+C), SIGCONT (resume), SIGWINCH (resize), SIGHUP (reattach)
-
-## Scene System
-
-**File:** `/workspace/project/mim-ai/src/tui/scene.ts`
-
-### Scene Builders
-- `createBridgeGuardianScene()`: Bridge/chasm layout with trees and grass
-- `createWellspringScene()`: Water/cobblestone with trees
-- `createDefaultScene()`: Simple grass field
-- `createScene(sprites, sceneType)`: Route to correct scene builder
-- `renderScene(tileset, background, sprites)`: Sprite overlay rendering
 
 ## Key Differences from Arbiter
 

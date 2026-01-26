@@ -5,11 +5,12 @@ import path from 'node:path';
 export const ReviewEntrySchema = z.object({
     id: z.string(),
     subject: z.string(),
-    type: z.enum(['stale', 'conflict', 'outdated']),
+    type: z.enum(['stale', 'conflict', 'outdated', 'auto_fix']),
     question: z.string(),
     options: z.array(z.string()),
     knowledge_file: z.string(),
     agent_notes: z.string(),
+    auto_apply: z.boolean().optional(), // If true, Wellspring applies without user interaction
 });
 export const ChangesReviewerOutputSchema = z.object({
     reviews: z.array(ReviewEntrySchema),

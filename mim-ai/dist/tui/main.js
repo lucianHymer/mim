@@ -676,8 +676,9 @@ class MimGame {
             for (const file of files) {
                 const content = fs.readFileSync(path.join(dir, file), 'utf-8');
                 const review = JSON.parse(content);
-                // Only load unanswered reviews
-                if (!review.answer) {
+                // Only load unanswered reviews that need user interaction
+                // Skip auto_apply reviews - Wellspring handles those automatically
+                if (!review.answer && !review.auto_apply) {
                     this.pendingReviews.push(review);
                 }
             }
@@ -688,7 +689,8 @@ class MimGame {
     }
     saveReviewAnswer(review, answer) {
         review.answer = answer;
-        const filename = `${review.id}-${review.subject.replace(/[^a-z0-9]/gi, '-')}.json`;
+        // Use same filename format as writePendingReview: {id}.json
+        const filename = `${review.id}.json`;
         const filepath = path.join(process.cwd(), PENDING_REVIEW_DIR, filename);
         fs.writeFileSync(filepath, JSON.stringify(review, null, 2));
     }

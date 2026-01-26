@@ -31,14 +31,6 @@
 - Retreat screen when turning back (off left edge)
 - Exit: walk right off screen after seeing sign
 
-## Animation System
-
-**File:** `/workspace/arbiter/src/tui/animation-loop.ts`
-
-- Global sprite registry with tick-based updates at ~60fps (16ms interval)
-- Tracks actual delta time for smooth animations regardless of system load
-- Functions: `registerSprite`, `unregisterSprite`, `getSprite`, `getAllSprites`, `startAnimationLoop`, `stopAnimationLoop`, `hasActiveAnimations`
-
 ## Sprite System
 
 **File:** `/workspace/arbiter/src/tui/sprite.ts`
@@ -58,16 +50,6 @@
 ### Movement Modes
 - `controlled=true`: uses `step()` for user input
 - `controlled=false`: uses `walk()` for scripted animations
-
-## Scene System
-
-**File:** `/workspace/arbiter/src/tui/scene.ts`
-
-- SCENE_WIDTH=7, SCENE_HEIGHT=6
-- Background tiles only, sprites rendered on top via position lookup
-- Cached tile renders with `getCacheKey(tileIndex, mirrored)`
-- Quarter-tile support for chat/alert indicators
-- Hopping animation support: shifts sprite up 1 row during jump frame
 
 ## Tileset System
 
@@ -90,6 +72,8 @@
 | HUMAN_1-8 | 190-197 |
 | ARBITER | 205 |
 | DEMON_1-10 | 220-229 |
+| SPELLBOOK | 102 |
+| SCROLL | 124 |
 | FOCUS | 270 |
 | CHAT_BUBBLE_QUARTERS | 267 |
 | ALERT_QUARTERS | 268 |
@@ -97,7 +81,7 @@
 ## Modal/Overlay Patterns
 
 ### DialogueBox
-- 2-5 tiles wide × 2 tiles tall
+- 4-7 tiles wide × 2-3+ tiles tall (dynamic)
 - Uses DIALOGUE_TILES (38=TOP_LEFT, 39=TOP_RIGHT, 48=BOTTOM_LEFT, 49=BOTTOM_RIGHT)
 - Middle fill rows use `createMiddleFill()` sampling from left tile's middle column
 - Text centered with padding, background color sampled from tile center
@@ -116,11 +100,3 @@
 - Color-coded status (dim gray, yellow, green)
 - Max 8 visible tasks with scrolling
 
-## Rendering Strategy
-
-**Strategy 5: Minimal Redraws**
-
-- Change tracking to avoid full redraws (`tracker.lastTileFrame`, `lastSelectionIndex`, etc.)
-- Terminal-kit terminal object manages fullscreen, cursor, input grabbing
-- Direct stdout writes with ANSI positioning (`\x1b[row;colH`)
-- Debouncing for resize/SIGWINCH signals

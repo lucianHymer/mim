@@ -82,6 +82,22 @@ Based on your investigation, report:
 
 Be thorough but efficient. Focus on verifying the specific claims in the knowledge entry.
 
+## CRITICAL: review_question Format
+
+When writing review_question, follow these rules STRICTLY:
+
+1. **NEVER list options in the question** - The options array is shown separately below the question as [1], [2], etc. If you put "Should we (1) delete (2) update (3) keep" in the question, the user sees the options TWICE.
+
+2. **Just explain the situation** - Describe what you found, what's wrong, and what decision is needed. 2-4 sentences max.
+
+BAD (options in question):
+"The file was moved. Should we: (1) Update the path, (2) Delete the entry, or (3) Keep as-is?"
+
+GOOD (situation only):
+"The referenced file config/old.js was moved to src/config/new.js. The knowledge documents the old path which no longer exists."
+
+The options array handles the choices. The question just sets up the decision.
+
 ## Important
 
 - Do NOT ask questions - make your best judgment
