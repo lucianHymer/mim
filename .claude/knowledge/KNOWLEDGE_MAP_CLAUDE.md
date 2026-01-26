@@ -4,9 +4,12 @@ This file provides Claude with quick access to all project knowledge via @ refer
 Structure mirrors KNOWLEDGE_MAP.md but uses @ references instead of markdown links.
 
 ## Architecture
+- @architecture/arbiter-tui-game.md
+- @architecture/mim-tui-game.md
 - @architecture/mim-agent-orchestration.md
 
 ## Patterns
+- @patterns/arbiter-tui-patterns.md
 - @patterns/streaming-agent-results.md
 
 ## Dependencies

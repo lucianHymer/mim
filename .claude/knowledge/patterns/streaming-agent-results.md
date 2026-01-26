@@ -2,15 +2,6 @@
 
 When spawning multiple agents in parallel that produce structured outputs destined for JSON files, write each result immediately as its agent completes rather than collecting all results first (batch pattern).
 
-## Batch Pattern (Avoid)
-
-```javascript
-const results = await Promise.all(agents);  // wait for ALL
-for (const result of results) {
-  writeJson(result);  // then write all at once
-}
-```
-
 ## Streaming Pattern (Preferred)
 
 ```javascript

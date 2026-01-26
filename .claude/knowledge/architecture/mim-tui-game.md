@@ -21,17 +21,6 @@ Mím implements a game loop with 5 screens (TITLE, CHARACTER_SELECT, BRIDGE_APPR
 ### Signal Handlers
 - SIGINT (Ctrl+C), SIGCONT (resume), SIGWINCH (resize), SIGHUP (reattach)
 
-## Key Differences from Arbiter
-
-| Aspect | Arbiter | Mím |
-|--------|---------|-----|
-| Animation loop | Global AnimationLoop module | setInterval in main.ts (250ms) |
-| NPC interaction | Signpost/rat/dialogue system | None |
-| Dialogue display | Scene-based dialogue boxes | Right side chat panel |
-| Agent integration | None | Wellspring agent via claude-agent-sdk |
-| Text input | N/A | Custom text input mode for "Other" option |
-| Data source | N/A | Pending review files from .claude/knowledge/pending-review |
-
 ## Chat/Info Panel
 
 - Position: x = TILE_AREA_WIDTH + 3, width = Math.max(40, terminal_width - x - 1)
@@ -49,28 +38,11 @@ Reuses Arbiter patterns:
 - Controlled vs scripted movement
 - Registered with animation loop: `registerSprite`, `unregisterSprite`
 
-## Input Handling Flow
-
-### Setup
-`setupInput()` sets up `term.on('key', ...)`
-
-### Global Keys
-- CTRL_C (exit)
-- CTRL_Z (suspend)
-
-### Screen-Specific Handlers
-- `handleCharacterSelectInput`
-- `handleBridgeGuardianInput`
-- `handleWellspringInput`
-
-### Text Input
-Separate handler `handleTextInput` for ENTER/ESC/BACKSPACE/printable chars
-
 ## Agent Integration
 
 - Uses `query()` from `@anthropic-ai/claude-agent-sdk`
 - WELLSPRING_SYSTEM_PROMPT from wellspring-agent.ts
-- Outputs structured JSON: `{ message?: string; done?: boolean }`
+- Outputs structured JSON: `{ message: string; done: boolean }` (both fields REQUIRED per zod schema)
 - Tool usage tracked: denies AskUserQuestion, allows other tools
 - Session ID tracked for logging
 - Error handling for max_turns, budget, structured output retries

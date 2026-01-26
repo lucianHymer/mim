@@ -2,8 +2,16 @@
  * Scene composition and rendering module for the Mim TUI
  *
  * Manages scene creation and rendering with sprite-based characters.
- * This is a minimal version that renders grass tiles - to be customized
- * later for Bridge Guardian and Wellspring scenes.
+ *
+ * ## Scene Builders
+ * - `createBridgeApproachScene()`: Chasm crossing with signpost warning
+ * - `createBridgeGuardianScene()`: Bridge/chasm layout with guardian blocking passage
+ * - `createWellspringScene()`: Water/grass clearing with Mím's head floating in pool
+ * - `createDefaultScene()`: Simple grass field (fallback)
+ * - `createScene(sprites, sceneType)`: Routes to correct scene builder by SceneType
+ * - `renderScene(tileset, background, sprites)`: Sprite overlay rendering with animation support
+ *
+ * All scenes are 7×6 tiles (SCENE_WIDTH × SCENE_HEIGHT).
  */
 import { CHAR_HEIGHT, compositeQuarterTile, compositeTiles, extractQuarterTile, extractTile, mirrorTile, renderTile, TILE, } from './tileset.js';
 // ============================================================================

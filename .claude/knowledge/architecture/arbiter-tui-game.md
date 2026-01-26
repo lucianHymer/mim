@@ -31,57 +31,10 @@
 - Retreat screen when turning back (off left edge)
 - Exit: walk right off screen after seeing sign
 
-## Sprite System
-
-**File:** `/workspace/arbiter/src/tui/sprite.ts`
-
-### Animation Types
-- **walking**: 1000ms per step
-- **hopping**: 250ms up, 250ms down, 150ms rest
-- **magic spawn/despawn/transform**: 400ms
-- **bubbling**: random intervals
-
-### Indicators
-- `'alert'` (top-left) and `'chat'` (top-right) overlay quarter-tiles
-
-### Methods
-`step()`, `walk(target)`, `hop(count)`, `magicSpawn()`, `magicDespawn()`, `magicTransform(toTile)`, `physicalSpawn()`, `startBubbling()`, `stopBubbling()`, `intrigued(ms)`, `chatting(ms)`, `tick(deltaMs)`
-
-### Movement Modes
-- `controlled=true`: uses `step()` for user input
-- `controlled=false`: uses `walk()` for scripted animations
-
-## Tileset System
-
-**File:** `/workspace/arbiter/src/tui/tileset.ts`
-
-- TILE_SIZE=16 pixels, CHAR_HEIGHT=8 (half-block rendering), TILES_PER_ROW=10
-- Path: `assets/jerom_16x16.png`
-- Functions: `loadTileset()`, `extractTile(tileset, index)`, `compositeTiles(fg, bg, alphaThreshold)`, `extractQuarterTile`, `renderTile` (ANSI output)
-
-### Key Tile Indices
-| Tile | Index |
-|------|-------|
-| GRASS | 50 |
-| GRASS_SPARSE | 51 |
-| PINE_TREE | 57 |
-| BARE_TREE | 58 |
-| CAULDRON | 86 |
-| CAMPFIRE | 87 |
-| SMOKE | 90 |
-| HUMAN_1-8 | 190-197 |
-| ARBITER | 205 |
-| DEMON_1-10 | 220-229 |
-| SPELLBOOK | 102 |
-| SCROLL | 124 |
-| FOCUS | 270 |
-| CHAT_BUBBLE_QUARTERS | 267 |
-| ALERT_QUARTERS | 268 |
-
 ## Modal/Overlay Patterns
 
 ### DialogueBox
-- 4-7 tiles wide × 2-3+ tiles tall (dynamic)
+- 4-7 tiles wide × 2-3+ tiles tall (dynamic height)
 - Uses DIALOGUE_TILES (38=TOP_LEFT, 39=TOP_RIGHT, 48=BOTTOM_LEFT, 49=BOTTOM_RIGHT)
 - Middle fill rows use `createMiddleFill()` sampling from left tile's middle column
 - Text centered with padding, background color sampled from tile center
