@@ -51,17 +51,13 @@ Knowledge is organized into categories:
 
 ## Installation
 
+Add the marketplace and install the plugin, then install the cli:
+
 ```bash
+claude plugin marketplace add lucianHymer/mim
+claude plugin install mim-ai@mim-marketplace --scope project
 npm install -g mim-ai
 ```
-
-Then initialize Mim in your project:
-
-```bash
-mim init
-```
-
-This creates the `.claude/knowledge/` directory structure and configures the MCP server.
 
 ## Usage
 
