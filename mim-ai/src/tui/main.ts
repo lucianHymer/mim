@@ -967,6 +967,9 @@ class MimGame {
       // Skip drawing when disabled or no TTY
       if (!this.state.drawingEnabled || !process.stdout.isTTY) return;
 
+      // Skip drawing when log viewer is open
+      if (this.logViewer?.isOpen()) return;
+
       // Redraw scenes that need animation
       if (this.state.currentScreen === 'BRIDGE_GUARDIAN') {
         if (hasActiveAnimations()) {
@@ -1815,6 +1818,14 @@ class MimGame {
       }
 
       if (key === 'ENTER') {
+        // Check for newline escape: \+enter inserts newline
+        if (this.state.wellspringInputBuffer.endsWith('\\')) {
+          // Remove trailing backslash and add newline
+          this.state.wellspringInputBuffer = this.state.wellspringInputBuffer.slice(0, -1) + '\n';
+          this.draw();
+          return;
+        }
+
         // Send message if buffer has content and not processing
         if (this.state.wellspringInputBuffer.trim().length > 0 && !this.state.agentProcessing) {
           const message = this.state.wellspringInputBuffer.trim();
@@ -1987,6 +1998,8 @@ class MimGame {
    * Full redraw of all components (debounced to prevent signal storms)
    */
   private fullDraw(): void {
+    if (this.logViewer?.isOpen()) return;
+
     // Skip all drawing when disabled
     if (!this.state.drawingEnabled) return;
 
@@ -2032,6 +2045,7 @@ class MimGame {
   }
 
   private draw(): void {
+    if (this.logViewer?.isOpen()) return;
     if (!this.state.drawingEnabled || !process.stdout.isTTY) return;
 
     // Reset title drawn flag when transitioning away from TITLE screen
@@ -3047,6 +3061,7 @@ class MimGame {
   }
 
   private drawScene(force: boolean = false): void {
+    if (this.logViewer?.isOpen()) return;
     if (!force && this.state.animationFrame === this.tracker.lastTileFrame) return;
     this.tracker.lastTileFrame = this.state.animationFrame;
 
@@ -3244,11 +3259,21 @@ class MimGame {
     // Calculate visible area for messages (between header and footer)
     const headerEndY = y;
     // Footer layout based on mode:
-    // INSERT mode: input line + 1-line status bar = 2 lines
+    // INSERT mode: input lines (multi-line supported) + 1-line status bar
     // SCROLL mode: 2-line status bar = 2 lines
     // Done mode: 1-line instruction = 1 line
     const showInputLine = this.state.wellspringMode === 'INSERT' && !this.state.agentDone;
-    const footerLines = this.state.agentDone ? 1 : (showInputLine ? 2 : 2);
+
+    // Calculate input lines for INSERT mode (handles newlines and word wrap)
+    const maxInputWidth = width - 2;
+    const inputBuffer = this.state.wellspringInputBuffer;
+    // For empty buffer, use single empty line so cursor appears on its own line
+    const inputLines = showInputLine
+      ? (inputBuffer ? this.wrapText(inputBuffer, maxInputWidth) : [''])
+      : [];
+    const inputLineCount = showInputLine ? Math.max(1, inputLines.length) : 0;
+
+    const footerLines = this.state.agentDone ? 1 : (showInputLine ? inputLineCount + 1 : 2);
     const instructionY = layout.chatArea.y + layout.chatArea.height - footerLines;
     const visibleHeight = instructionY - headerEndY;
 
@@ -3296,36 +3321,46 @@ class MimGame {
       const audioStatus = this.getAudioStatusString();
       process.stdout.write(`${COLORS.green}[ESC] Depart the Wellspring${COLORS.reset}  ${COLORS.dim}·${COLORS.reset}  ${audioStatus}`);
     } else if (this.state.wellspringMode === 'INSERT') {
-      // INSERT mode - input line with cursor, then single-line green status bar
-      term.moveTo(x, currentY);
-
-      // Input line with cursor (no badge here, badge goes on status bar)
+      // INSERT mode - input lines (multi-line supported) with cursor, then single-line green status bar
       const cursorChar = '\u2588'; // Block cursor
-      const inputDisplay = this.state.wellspringInputBuffer + cursorChar;
-      const maxInputWidth = width - 2;
-      const truncatedInput = inputDisplay.length > maxInputWidth
-        ? inputDisplay.substring(inputDisplay.length - maxInputWidth)
-        : inputDisplay;
-      process.stdout.write(`${COLORS.white}${truncatedInput}${COLORS.reset}`);
-      currentY++;
 
-      // Single-line status bar with green INSERT badge
+      // Render each input line, adding cursor to the last line
+      for (let i = 0; i < inputLines.length; i++) {
+        term.moveTo(x, currentY);
+        const line = inputLines[i];
+        const isLastLine = i === inputLines.length - 1;
+
+        if (isLastLine) {
+          // Add cursor at the end of the last line
+          const lineWithCursor = line + cursorChar;
+          const displayLine = lineWithCursor.length > maxInputWidth
+            ? lineWithCursor.substring(lineWithCursor.length - maxInputWidth)
+            : lineWithCursor;
+          process.stdout.write(`${COLORS.white}${displayLine}${COLORS.reset}`);
+        } else {
+          // Non-last lines: just show the text
+          process.stdout.write(`${COLORS.white}${line.substring(0, maxInputWidth)}${COLORS.reset}`);
+        }
+        currentY++;
+      }
+
+      // Single-line status bar with green INSERT badge (Arbiter format)
       term.moveTo(x, currentY);
-      const insertBadge = `${COLORS.bgGreen}${COLORS.black} INSERT ${COLORS.reset}`;
-      const insertHints = `${DIM}[Enter] Send  [ESC] Scroll  ·  [Ctrl+C] Quit${COLORS.reset}`;
-      process.stdout.write(`${insertBadge}     ${insertHints}`);
+      const insertBadge = `\x1b[42;30m INSERT \x1b[0m`;
+      const insertHints = `${DIM}esc:scroll  ·  \\+enter:newline  ·  ^C:quit  ·  ^Z:suspend${COLORS.reset}`;
+      process.stdout.write(`${insertBadge}    ${insertHints}`);
     } else {
-      // SCROLL mode - two-line brown status bar
+      // SCROLL mode - two-line brown status bar (Arbiter format)
       term.moveTo(x, currentY);
-      const scrollBadge = `${bgBrown}${COLORS.brightWhite} SCROLL ${COLORS.reset}`;
-      const scrollHints = `${DIM}[i] Insert  [↑/↓] Scroll  [Ctrl+C] Quit${COLORS.reset}`;
-      process.stdout.write(`${scrollBadge}     ${scrollHints}`);
+      const scrollBadge = `\x1b[48;2;139;69;19m\x1b[97m SCROLL \x1b[0m`;
+      const scrollHints = `${DIM}i:insert  ·  ↑/↓:scroll  ·  ^C:quit  ·  ^Z:suspend${COLORS.reset}`;
+      process.stdout.write(`${scrollBadge}    ${scrollHints}`);
       currentY++;
 
-      // Second line with audio controls (indented to align with first line hints)
+      // Second line with audio controls (12 spaces indent to align)
       term.moveTo(x, currentY);
-      const indent = '            '; // ~12 chars to align with first line after badge
-      const audioLine = `${indent}${DIM}[o] Log  [m] Music(${musicColor}${musicText}${COLORS.reset}${DIM})  [s] SFX(${sfxColor}${sfxText}${COLORS.reset}${DIM})${COLORS.reset}`;
+      const indent = '            '; // 12 spaces to align with first line after badge
+      const audioLine = `${indent}${DIM}o:log  ·  m:music(${musicColor}${musicText}${COLORS.reset}${DIM}/${musicMode === 'quiet' ? cYellow : DIM}quiet${COLORS.reset}${DIM}/${musicMode === 'off' ? cRed : DIM}off${COLORS.reset}${DIM})  ·  s:sfx(${sfxColor}${sfxText}${COLORS.reset}${DIM}/${sfxOn ? DIM : cRed}off${COLORS.reset}${DIM})${COLORS.reset}`;
       process.stdout.write(audioLine);
     }
   }
