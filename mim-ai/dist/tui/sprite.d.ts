@@ -40,6 +40,11 @@ export type SpriteAnimation = {
     showing: boolean;
     elapsed: number;
     phaseDuration: number;
+} | {
+    type: 'flipping';
+    mirrored: boolean;
+    elapsed: number;
+    phaseDuration: number;
 };
 /**
  * Configuration options for creating a new Sprite
@@ -182,6 +187,23 @@ export declare class Sprite {
      */
     stopBubbling(): void;
     /**
+     * Starts the flipping animation loop (like water ripples)
+     *
+     * The flipping animation toggles the mirrored state with random intervals
+     * (800-2000ms). Loops indefinitely until stopped.
+     */
+    startFlipping(): void;
+    /**
+     * Stops the flipping animation
+     *
+     * Clears the animation if currently flipping.
+     */
+    stopFlipping(): void;
+    /**
+     * Gets whether the sprite is currently mirrored (for flipping animation)
+     */
+    get mirrored(): boolean;
+    /**
      * Shows an alert indicator for the specified duration
      *
      * @param durationMs - How long to show the alert indicator
@@ -239,12 +261,22 @@ export declare class Sprite {
      */
     private tickBubbling;
     /**
+     * Updates flipping animation - toggles mirrored state based on random intervals
+     */
+    private tickFlipping;
+    /**
      * Gets a random duration for bubbling animation phase
      *
      * @param isShowing - Whether the bubble is currently showing
      * @returns Duration in milliseconds (400-1200ms for showing, 600-2000ms for hiding)
      */
     private getRandomBubbleDuration;
+    /**
+     * Gets a random duration for flipping animation phase
+     *
+     * @returns Duration in milliseconds (800-2000ms)
+     */
+    private getRandomFlipDuration;
     /**
      * Helper to create a delay promise
      */

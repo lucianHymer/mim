@@ -46,6 +46,7 @@ declare class MimGame {
     private guardianSprite;
     private mimSprite;
     private odinSprite;
+    private tentacleSprite;
     private pendingReviews;
     private currentReviewIndex;
     private logViewer;

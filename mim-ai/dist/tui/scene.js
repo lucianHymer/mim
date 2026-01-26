@@ -412,6 +412,10 @@ export function renderScene(tileset, background, sprites) {
                 }
                 // Render sprite tile with potential indicator overlays
                 let pixels = extractTile(tileset, spriteTile);
+                // Apply mirroring for flipping animation
+                if (sprite.mirrored) {
+                    pixels = mirrorTile(pixels);
+                }
                 // Composite sprite on the actual background tile at this position
                 if (spriteTile >= 80) {
                     const backgroundPixels = extractTile(tileset, tileIndex);

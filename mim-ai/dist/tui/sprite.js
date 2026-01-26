@@ -130,6 +130,7 @@ export class Sprite {
             return;
         }
         return new Promise((resolve) => {
+            playSfx('jump');
             this._animation = {
                 type: 'hopping',
                 hopsRemaining: count,
@@ -239,6 +240,41 @@ export class Sprite {
         this.visible = false;
     }
     /**
+     * Starts the flipping animation loop (like water ripples)
+     *
+     * The flipping animation toggles the mirrored state with random intervals
+     * (800-2000ms). Loops indefinitely until stopped.
+     */
+    startFlipping() {
+        this.visible = true;
+        const phaseDuration = this.getRandomFlipDuration();
+        this._animation = {
+            type: 'flipping',
+            mirrored: false,
+            elapsed: 0,
+            phaseDuration,
+        };
+    }
+    /**
+     * Stops the flipping animation
+     *
+     * Clears the animation if currently flipping.
+     */
+    stopFlipping() {
+        if (this._animation?.type === 'flipping') {
+            this._animation = null;
+        }
+    }
+    /**
+     * Gets whether the sprite is currently mirrored (for flipping animation)
+     */
+    get mirrored() {
+        if (this._animation?.type === 'flipping') {
+            return this._animation.mirrored;
+        }
+        return false;
+    }
+    /**
      * Shows an alert indicator for the specified duration
      *
      * @param durationMs - How long to show the alert indicator
@@ -299,6 +335,9 @@ export class Sprite {
                 break;
             case 'bubbling':
                 this.tickBubbling(this._animation);
+                break;
+            case 'flipping':
+                this.tickFlipping(this._animation);
                 break;
         }
     }
@@ -403,6 +442,16 @@ export class Sprite {
         }
     }
     /**
+     * Updates flipping animation - toggles mirrored state based on random intervals
+     */
+    tickFlipping(anim) {
+        if (anim.elapsed >= anim.phaseDuration) {
+            anim.elapsed = 0;
+            anim.mirrored = !anim.mirrored;
+            anim.phaseDuration = this.getRandomFlipDuration();
+        }
+    }
+    /**
      * Gets a random duration for bubbling animation phase
      *
      * @param isShowing - Whether the bubble is currently showing
@@ -417,6 +466,14 @@ export class Sprite {
             // Off phase: 600-2000ms
             return 600 + Math.random() * 1400;
         }
+    }
+    /**
+     * Gets a random duration for flipping animation phase
+     *
+     * @returns Duration in milliseconds (800-2000ms)
+     */
+    getRandomFlipDuration() {
+        return 800 + Math.random() * 1200;
     }
     /**
      * Helper to create a delay promise

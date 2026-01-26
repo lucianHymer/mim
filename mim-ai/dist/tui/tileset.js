@@ -66,6 +66,7 @@ export const TILE = {
     GUARDIAN: 199, // Bridge guardian (cloaked figure)
     ODIN: 209, // Odin watching at Wellspring
     MIM: 216, // Mim's head in the water
+    TENTACLE: 219, // Tentacle for Wellspring water animation
     CHASM: 0, // Dark/empty tile for the chasm
 };
 // ============================================================================

@@ -52,6 +52,7 @@ export declare const TILE: {
     readonly GUARDIAN: 199;
     readonly ODIN: 209;
     readonly MIM: 216;
+    readonly TENTACLE: 219;
     readonly CHASM: 0;
 };
 export type QuarterPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';

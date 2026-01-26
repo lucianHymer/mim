@@ -590,6 +590,7 @@ class MimGame {
   private guardianSprite: Sprite | null = null;
   private mimSprite: Sprite | null = null;
   private odinSprite: Sprite | null = null;
+  private tentacleSprite: Sprite | null = null;
 
   // Pending review state
   private pendingReviews: PendingReview[] = [];
@@ -1260,6 +1261,19 @@ class MimGame {
     // Start bubbling animation
     this.mimSprite.startBubbling();
 
+    // Create tentacle sprite (in the water, flipping like ripples)
+    // Position: one up and one left from Mím at (3,3) -> (2,2)
+    this.tentacleSprite = new Sprite({
+      id: 'tentacle',
+      tile: TILE.TENTACLE,
+      position: { row: 2, col: 2 },
+      visible: true,
+      controlled: false,
+    });
+    registerSprite(this.tentacleSprite);
+    // Start flipping animation (mirror effect)
+    this.tentacleSprite.startFlipping();
+
     // Clear screen and draw initial scene FIRST
     term.clear();
     this.fullDraw();
@@ -1477,6 +1491,9 @@ class MimGame {
 
     // Show user message in chat
     this.addMessage('user', text);
+
+    // Mímir hops when user sends a message (shows he heard it)
+    this.mimSprite?.hop(1);
 
     logInfo(AGENT, `Sending user message to session ${this.state.wellspringSessionId}`);
     this.state.agentProcessing = true;
@@ -2822,19 +2839,20 @@ class MimGame {
       // Show text input or options
       if (this.state.otherInputActive) {
         textLines.push(`${COLORS.cyan}Type your answer:${RESET}`);
+        textLines.push('');
 
         // Wrap text to fit interior width, reserve space for cursor
-        const maxLineWidth = interiorWidth - 4; // Leave room for borders and padding
-        const maxLines = 5;
+        const maxLineWidth = interiorWidth - 6; // Leave room for borders, padding, cursor
+        const maxVisibleLines = 4; // Number of lines to show at once
 
         if (this.state.otherInputText.length === 0) {
-          // Empty - just show cursor
-          textLines.push(`\u2588`);
+          // Empty - show cursor on blank line with consistent styling
+          textLines.push(`${COLORS.white}\u2588${RESET}`);
         } else {
-          // Wrap text into lines
+          // Wrap all text into lines (no limit during wrapping)
           const wrappedLines: string[] = [];
           let remaining = this.state.otherInputText;
-          while (remaining.length > 0 && wrappedLines.length < maxLines) {
+          while (remaining.length > 0) {
             if (remaining.length <= maxLineWidth) {
               wrappedLines.push(remaining);
               remaining = '';
@@ -2844,15 +2862,25 @@ class MimGame {
             }
           }
 
-          // Add lines, cursor on last line
-          for (let i = 0; i < wrappedLines.length; i++) {
-            const isLastLine = i === wrappedLines.length - 1;
-            const line = wrappedLines[i];
-            textLines.push(isLastLine ? `${line}\u2588` : line);
+          // Show only the last N lines (scroll window showing end where user is typing)
+          const startIdx = Math.max(0, wrappedLines.length - maxVisibleLines);
+          const visibleLines = wrappedLines.slice(startIdx);
+
+          // Show scroll indicator if there's more text above
+          if (startIdx > 0) {
+            textLines.push(`${COLORS.dim}... (${startIdx} more lines above)${RESET}`);
+          }
+
+          // Add visible lines, cursor on last line
+          for (let i = 0; i < visibleLines.length; i++) {
+            const isLastLine = i === visibleLines.length - 1;
+            const line = visibleLines[i];
+            textLines.push(`${COLORS.white}${line}${isLastLine ? '\u2588' : ''}${RESET}`);
           }
         }
 
-        textLines.push(`${COLORS.dim}[Enter] Submit  [ESC] Cancel${COLORS.reset}`);
+        textLines.push('');
+        textLines.push(`${COLORS.dim}[Enter] Submit  [ESC] Cancel${RESET}`);
       } else {
         // Show options [1] [2] [3] [4]
         for (let i = 0; i < review.options.length && i < 4; i++) {
@@ -3210,10 +3238,10 @@ class MimGame {
         ? '(1 tool)'
         : `(${this.state.toolCountSinceLastMessage} tools)`;
 
-      renderedLines.push({ text: '', color: 'gray' }); // blank line
+      renderedLines.push({ text: '', color: COLORS.dim }); // blank line
       renderedLines.push({
         text: `${pulse} ${toolsText} ${countText} ${pulse}`,
-        color: 'gray'
+        color: COLORS.dim
       });
     }
 
