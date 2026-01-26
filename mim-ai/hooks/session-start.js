@@ -36,7 +36,8 @@ function runMimInit() {
 function spawnBackgroundAnalysis() {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
-  const analysisScript = path.join(__dirname, 'run-analysis.js');
+  // Use bundled version - it includes all npm dependencies
+  const analysisScript = path.join(__dirname, 'run-analysis.bundled.cjs');
 
   // Spawn detached so it doesn't block the session
   const child = spawn('node', [analysisScript], {
@@ -84,10 +85,25 @@ function countPendingReviews() {
   }
 }
 
+/**
+ * Output hook result as JSON to stdout
+ * Claude Code hooks communicate via structured JSON, not plain text
+ */
+function outputResult(message) {
+  const result = {
+    continue: true,
+  };
+  if (message) {
+    result.systemMessage = message;
+  }
+  console.log(JSON.stringify(result));
+}
+
 async function main() {
   const currentHead = getCurrentHead();
   if (!currentHead) {
-    // Not a git repo, skip
+    // Not a git repo, skip silently
+    outputResult(null);
     return;
   }
 
@@ -96,33 +112,41 @@ async function main() {
 
   const lastAnalysis = readLastAnalysis();
   const pendingCount = countPendingReviews();
+  const messages = [];
 
   // Check if analysis is needed
   if (lastAnalysis && lastAnalysis.commit_hash === currentHead) {
     // Already analyzed this commit
     if (pendingCount > 0) {
-      console.log(`\n🗣️ Mím awaits: ${pendingCount} question${pendingCount > 1 ? 's' : ''} require your wisdom.`);
-      console.log('   Run "mim review" to visit the Bridge Guardian.\n');
+      messages.push(`🗣️ ${pendingCount} pending review${pendingCount > 1 ? 's' : ''} await your decision.`);
+      messages.push('   Run "mim review" to begin.');
     }
+    outputResult(messages.length > 0 ? messages.join('\n') : null);
     return;
   }
 
   // HEAD has changed - spawn background analysis
   if (lastAnalysis) {
-    console.log('\n📜 The codebase has changed since last analysis.');
-    console.log('   Mím is analyzing in the background...\n');
-    spawnBackgroundAnalysis();
+    messages.push('📜 The codebase has changed since last analysis.');
+    messages.push('   Mím is analyzing in the background...');
   } else {
     // First time - also spawn analysis
-    console.log('\n📜 First time seeing this codebase.');
-    console.log('   Mím is analyzing in the background...\n');
-    spawnBackgroundAnalysis();
+    messages.push('📜 First time seeing this codebase.');
+    messages.push('   Mím is analyzing in the background...');
   }
+  spawnBackgroundAnalysis();
 
   if (pendingCount > 0) {
-    console.log(`🗣️ ${pendingCount} pending review${pendingCount > 1 ? 's' : ''} await your decision.`);
-    console.log('   Run "mim review" to begin.\n');
+    messages.push('');
+    messages.push(`🗣️ ${pendingCount} pending review${pendingCount > 1 ? 's' : ''} await your decision.`);
+    messages.push('   Run "mim review" to begin.');
   }
+
+  outputResult(messages.join('\n'));
 }
 
-main().catch(console.error);
+main().catch((err) => {
+  // On error, still output valid JSON so hook doesn't break
+  console.log(JSON.stringify({ continue: true }));
+  process.exit(0);
+});

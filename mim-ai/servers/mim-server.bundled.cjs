@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-
 // Bundled MCP Server for Mim
 // Built with esbuild - all dependencies included
 
