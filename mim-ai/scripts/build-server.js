@@ -40,13 +40,13 @@ const nodeBuiltins = [
   'module',
 ];
 
-async function bundleFile(entry, outfile, description) {
+async function bundleFile(entry, outfile, description, format = 'cjs') {
   await esbuild.build({
     entryPoints: [entry],
     bundle: true,
     platform: 'node',
     target: 'node18',
-    format: 'cjs',
+    format,
     outfile,
     external: nodeBuiltins,
     define: {
@@ -70,11 +70,12 @@ async function build() {
       'MCP Server'
     );
 
-    // Bundle run-analysis hook (has npm dependencies like @anthropic-ai/claude-agent-sdk)
+    // Bundle run-analysis hook as ESM (needs import.meta.url for claude-agent-sdk)
     await bundleFile(
       join(projectRoot, 'hooks/run-analysis.js'),
-      join(projectRoot, 'hooks/run-analysis.bundled.cjs'),
-      'Analysis Hook'
+      join(projectRoot, 'hooks/run-analysis.bundled.mjs'),
+      'Analysis Hook',
+      'esm'
     );
 
     console.log('\n✓ All bundles created successfully');

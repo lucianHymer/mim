@@ -2,65 +2,42 @@
 // Bundled Analysis Hook for Mim
 // Built with esbuild - all dependencies included
 
-"use strict";
-var __create = Object.create;
 var __defProp = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __getProtoOf = Object.getPrototypeOf;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
 };
-var __copyProps = (to, from, except, desc) => {
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
-  }
-  return to;
-};
-var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
-  // If the importer is in node compatibility mode or this is not an ESM
-  // file that has been converted to a CommonJS file using a Babel-
-  // compatible transform (i.e. "__esModule" has not been set), then set
-  // "default" to the CommonJS "module.exports" for node compatibility.
-  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
-  mod
-));
 
 // node_modules/@anthropic-ai/claude-agent-sdk/sdk.mjs
-var import_path = require("path");
-var import_url = require("url");
-var import_events = require("events");
-var import_child_process = require("child_process");
-var import_readline = require("readline");
-var fs = __toESM(require("fs"), 1);
-var import_promises = require("fs/promises");
-var import_path2 = require("path");
-var import_os = require("os");
-var import_path3 = require("path");
-var import_process = require("process");
-var import_fs = require("fs");
-var import_crypto = require("crypto");
-var import_crypto2 = require("crypto");
-var import_fs2 = require("fs");
-var import_path4 = require("path");
-var import_crypto3 = require("crypto");
-var import_path5 = require("path");
-var import_url2 = require("url");
-var import_meta = {};
-var __create2 = Object.create;
-var __getProtoOf2 = Object.getPrototypeOf;
+import { join as join5 } from "path";
+import { fileURLToPath as fileURLToPath2 } from "url";
+import { setMaxListeners } from "events";
+import { spawn } from "child_process";
+import { createInterface } from "readline";
+import * as fs from "fs";
+import { stat as statPromise, open } from "fs/promises";
+import { join } from "path";
+import { homedir } from "os";
+import { dirname, join as join2 } from "path";
+import { cwd } from "process";
+import { realpathSync as realpathSync2 } from "fs";
+import { randomUUID } from "crypto";
+import { randomUUID as randomUUID2 } from "crypto";
+import { appendFileSync as appendFileSync2, existsSync as existsSync2, mkdirSync as mkdirSync2 } from "fs";
+import { join as join3 } from "path";
+import { randomUUID as randomUUID3 } from "crypto";
+import { join as join4 } from "path";
+import { fileURLToPath } from "url";
+var __create = Object.create;
+var __getProtoOf = Object.getPrototypeOf;
 var __defProp2 = Object.defineProperty;
-var __getOwnPropNames2 = Object.getOwnPropertyNames;
-var __hasOwnProp2 = Object.prototype.hasOwnProperty;
-var __toESM2 = (mod, isNodeMode, target) => {
-  target = mod != null ? __create2(__getProtoOf2(mod)) : {};
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __toESM = (mod, isNodeMode, target) => {
+  target = mod != null ? __create(__getProtoOf(mod)) : {};
   const to = isNodeMode || !mod || !mod.__esModule ? __defProp2(target, "default", { value: mod, enumerable: true }) : target;
-  for (let key of __getOwnPropNames2(mod))
-    if (!__hasOwnProp2.call(to, key))
+  for (let key of __getOwnPropNames(mod))
+    if (!__hasOwnProp.call(to, key))
       __defProp2(to, key, {
         get: () => mod[key],
         enumerable: true
@@ -77,17 +54,17 @@ var __export2 = (target, all) => {
       set: (newValue) => all[name] = () => newValue
     });
 };
-var require_code = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.regexpCode = exports2.getEsmExportName = exports2.getProperty = exports2.safeStringify = exports2.stringify = exports2.strConcat = exports2.addCodeArg = exports2.str = exports2._ = exports2.nil = exports2._Code = exports2.Name = exports2.IDENTIFIER = exports2._CodeOrName = void 0;
+var require_code = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.regexpCode = exports.getEsmExportName = exports.getProperty = exports.safeStringify = exports.stringify = exports.strConcat = exports.addCodeArg = exports.str = exports._ = exports.nil = exports._Code = exports.Name = exports.IDENTIFIER = exports._CodeOrName = void 0;
   class _CodeOrName {
   }
-  exports2._CodeOrName = _CodeOrName;
-  exports2.IDENTIFIER = /^[a-z$_][a-z$_0-9]*$/i;
+  exports._CodeOrName = _CodeOrName;
+  exports.IDENTIFIER = /^[a-z$_][a-z$_0-9]*$/i;
   class Name extends _CodeOrName {
     constructor(s) {
       super();
-      if (!exports2.IDENTIFIER.test(s))
+      if (!exports.IDENTIFIER.test(s))
         throw new Error("CodeGen: name must be a valid identifier");
       this.str = s;
     }
@@ -101,7 +78,7 @@ var require_code = __commonJS((exports2) => {
       return { [this.str]: 1 };
     }
   }
-  exports2.Name = Name;
+  exports.Name = Name;
   class _Code extends _CodeOrName {
     constructor(code) {
       super();
@@ -129,8 +106,8 @@ var require_code = __commonJS((exports2) => {
       }, {});
     }
   }
-  exports2._Code = _Code;
-  exports2.nil = new _Code("");
+  exports._Code = _Code;
+  exports.nil = new _Code("");
   function _(strs, ...args) {
     const code = [strs[0]];
     let i = 0;
@@ -140,7 +117,7 @@ var require_code = __commonJS((exports2) => {
     }
     return new _Code(code);
   }
-  exports2._ = _;
+  exports._ = _;
   var plus = new _Code("+");
   function str(strs, ...args) {
     const expr = [safeStringify(strs[0])];
@@ -153,7 +130,7 @@ var require_code = __commonJS((exports2) => {
     optimize(expr);
     return new _Code(expr);
   }
-  exports2.str = str;
+  exports.str = str;
   function addCodeArg(code, arg) {
     if (arg instanceof _Code)
       code.push(...arg._items);
@@ -162,7 +139,7 @@ var require_code = __commonJS((exports2) => {
     else
       code.push(interpolate(arg));
   }
-  exports2.addCodeArg = addCodeArg;
+  exports.addCodeArg = addCodeArg;
   function optimize(expr) {
     let i = 1;
     while (i < expr.length - 1) {
@@ -198,37 +175,37 @@ var require_code = __commonJS((exports2) => {
   function strConcat(c1, c2) {
     return c2.emptyStr() ? c1 : c1.emptyStr() ? c2 : str`${c1}${c2}`;
   }
-  exports2.strConcat = strConcat;
+  exports.strConcat = strConcat;
   function interpolate(x) {
     return typeof x == "number" || typeof x == "boolean" || x === null ? x : safeStringify(Array.isArray(x) ? x.join(",") : x);
   }
   function stringify(x) {
     return new _Code(safeStringify(x));
   }
-  exports2.stringify = stringify;
+  exports.stringify = stringify;
   function safeStringify(x) {
     return JSON.stringify(x).replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
   }
-  exports2.safeStringify = safeStringify;
+  exports.safeStringify = safeStringify;
   function getProperty(key) {
-    return typeof key == "string" && exports2.IDENTIFIER.test(key) ? new _Code(`.${key}`) : _`[${key}]`;
+    return typeof key == "string" && exports.IDENTIFIER.test(key) ? new _Code(`.${key}`) : _`[${key}]`;
   }
-  exports2.getProperty = getProperty;
+  exports.getProperty = getProperty;
   function getEsmExportName(key) {
-    if (typeof key == "string" && exports2.IDENTIFIER.test(key)) {
+    if (typeof key == "string" && exports.IDENTIFIER.test(key)) {
       return new _Code(`${key}`);
     }
     throw new Error(`CodeGen: invalid export name: ${key}, use explicit $id name mapping`);
   }
-  exports2.getEsmExportName = getEsmExportName;
+  exports.getEsmExportName = getEsmExportName;
   function regexpCode(rx) {
     return new _Code(rx.toString());
   }
-  exports2.regexpCode = regexpCode;
+  exports.regexpCode = regexpCode;
 });
-var require_scope = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.ValueScope = exports2.ValueScopeName = exports2.Scope = exports2.varKinds = exports2.UsedValueState = void 0;
+var require_scope = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.ValueScope = exports.ValueScopeName = exports.Scope = exports.varKinds = exports.UsedValueState = void 0;
   var code_1 = require_code();
   class ValueError extends Error {
     constructor(name) {
@@ -240,8 +217,8 @@ var require_scope = __commonJS((exports2) => {
   (function(UsedValueState2) {
     UsedValueState2[UsedValueState2["Started"] = 0] = "Started";
     UsedValueState2[UsedValueState2["Completed"] = 1] = "Completed";
-  })(UsedValueState || (exports2.UsedValueState = UsedValueState = {}));
-  exports2.varKinds = {
+  })(UsedValueState || (exports.UsedValueState = UsedValueState = {}));
+  exports.varKinds = {
     const: new code_1.Name("const"),
     let: new code_1.Name("let"),
     var: new code_1.Name("var")
@@ -270,7 +247,7 @@ var require_scope = __commonJS((exports2) => {
       return this._names[prefix] = { prefix, index: 0 };
     }
   }
-  exports2.Scope = Scope;
+  exports.Scope = Scope;
   class ValueScopeName extends code_1.Name {
     constructor(prefix, nameStr) {
       super(nameStr);
@@ -281,7 +258,7 @@ var require_scope = __commonJS((exports2) => {
       this.scopePath = (0, code_1._)`.${new code_1.Name(property)}[${itemIndex}]`;
     }
   }
-  exports2.ValueScopeName = ValueScopeName;
+  exports.ValueScopeName = ValueScopeName;
   var line = (0, code_1._)`\n`;
   class ValueScope extends Scope {
     constructor(opts) {
@@ -351,7 +328,7 @@ var require_scope = __commonJS((exports2) => {
           nameSet.set(name, UsedValueState.Started);
           let c = valueCode(name);
           if (c) {
-            const def = this.opts.es5 ? exports2.varKinds.var : exports2.varKinds.const;
+            const def = this.opts.es5 ? exports.varKinds.var : exports.varKinds.const;
             code = (0, code_1._)`${code}${def} ${name} = ${c};${this.opts._n}`;
           } else if (c = getCode === null || getCode === void 0 ? void 0 : getCode(name)) {
             code = (0, code_1._)`${code}${c}${this.opts._n}`;
@@ -364,52 +341,52 @@ var require_scope = __commonJS((exports2) => {
       return code;
     }
   }
-  exports2.ValueScope = ValueScope;
+  exports.ValueScope = ValueScope;
 });
-var require_codegen = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.or = exports2.and = exports2.not = exports2.CodeGen = exports2.operators = exports2.varKinds = exports2.ValueScopeName = exports2.ValueScope = exports2.Scope = exports2.Name = exports2.regexpCode = exports2.stringify = exports2.getProperty = exports2.nil = exports2.strConcat = exports2.str = exports2._ = void 0;
+var require_codegen = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.or = exports.and = exports.not = exports.CodeGen = exports.operators = exports.varKinds = exports.ValueScopeName = exports.ValueScope = exports.Scope = exports.Name = exports.regexpCode = exports.stringify = exports.getProperty = exports.nil = exports.strConcat = exports.str = exports._ = void 0;
   var code_1 = require_code();
   var scope_1 = require_scope();
   var code_2 = require_code();
-  Object.defineProperty(exports2, "_", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "_", { enumerable: true, get: function() {
     return code_2._;
   } });
-  Object.defineProperty(exports2, "str", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "str", { enumerable: true, get: function() {
     return code_2.str;
   } });
-  Object.defineProperty(exports2, "strConcat", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "strConcat", { enumerable: true, get: function() {
     return code_2.strConcat;
   } });
-  Object.defineProperty(exports2, "nil", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "nil", { enumerable: true, get: function() {
     return code_2.nil;
   } });
-  Object.defineProperty(exports2, "getProperty", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "getProperty", { enumerable: true, get: function() {
     return code_2.getProperty;
   } });
-  Object.defineProperty(exports2, "stringify", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "stringify", { enumerable: true, get: function() {
     return code_2.stringify;
   } });
-  Object.defineProperty(exports2, "regexpCode", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "regexpCode", { enumerable: true, get: function() {
     return code_2.regexpCode;
   } });
-  Object.defineProperty(exports2, "Name", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "Name", { enumerable: true, get: function() {
     return code_2.Name;
   } });
   var scope_2 = require_scope();
-  Object.defineProperty(exports2, "Scope", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "Scope", { enumerable: true, get: function() {
     return scope_2.Scope;
   } });
-  Object.defineProperty(exports2, "ValueScope", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "ValueScope", { enumerable: true, get: function() {
     return scope_2.ValueScope;
   } });
-  Object.defineProperty(exports2, "ValueScopeName", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "ValueScopeName", { enumerable: true, get: function() {
     return scope_2.ValueScopeName;
   } });
-  Object.defineProperty(exports2, "varKinds", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "varKinds", { enumerable: true, get: function() {
     return scope_2.varKinds;
   } });
-  exports2.operators = {
+  exports.operators = {
     GT: new code_1._Code(">"),
     GTE: new code_1._Code(">="),
     LT: new code_1._Code("<"),
@@ -813,7 +790,7 @@ var require_codegen = __commonJS((exports2) => {
       return this._leafNode(new Assign(lhs, rhs, sideEffects));
     }
     add(lhs, rhs) {
-      return this._leafNode(new AssignOp(lhs, exports2.operators.ADD, rhs));
+      return this._leafNode(new AssignOp(lhs, exports.operators.ADD, rhs));
     }
     code(c) {
       if (typeof c == "function")
@@ -992,7 +969,7 @@ var require_codegen = __commonJS((exports2) => {
       ns[ns.length - 1] = node;
     }
   }
-  exports2.CodeGen = CodeGen;
+  exports.CodeGen = CodeGen;
   function addNames(names, from) {
     for (const n in from)
       names[n] = (names[n] || 0) + (from[n] || 0);
@@ -1033,17 +1010,17 @@ var require_codegen = __commonJS((exports2) => {
   function not(x) {
     return typeof x == "boolean" || typeof x == "number" || x === null ? !x : (0, code_1._)`!${par(x)}`;
   }
-  exports2.not = not;
-  var andCode = mappend(exports2.operators.AND);
+  exports.not = not;
+  var andCode = mappend(exports.operators.AND);
   function and(...args) {
     return args.reduce(andCode);
   }
-  exports2.and = and;
-  var orCode = mappend(exports2.operators.OR);
+  exports.and = and;
+  var orCode = mappend(exports.operators.OR);
   function or(...args) {
     return args.reduce(orCode);
   }
-  exports2.or = or;
+  exports.or = or;
   function mappend(op) {
     return (x, y) => x === code_1.nil ? y : y === code_1.nil ? x : (0, code_1._)`${par(x)} ${op} ${par(y)}`;
   }
@@ -1051,9 +1028,9 @@ var require_codegen = __commonJS((exports2) => {
     return x instanceof code_1.Name ? x : (0, code_1._)`(${x})`;
   }
 });
-var require_util = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.checkStrictMode = exports2.getErrorPath = exports2.Type = exports2.useFunc = exports2.setEvaluated = exports2.evaluatedPropsToName = exports2.mergeEvaluated = exports2.eachItem = exports2.unescapeJsonPointer = exports2.escapeJsonPointer = exports2.escapeFragment = exports2.unescapeFragment = exports2.schemaRefOrVal = exports2.schemaHasRulesButRef = exports2.schemaHasRules = exports2.checkUnknownRules = exports2.alwaysValidSchema = exports2.toHash = void 0;
+var require_util = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.checkStrictMode = exports.getErrorPath = exports.Type = exports.useFunc = exports.setEvaluated = exports.evaluatedPropsToName = exports.mergeEvaluated = exports.eachItem = exports.unescapeJsonPointer = exports.escapeJsonPointer = exports.escapeFragment = exports.unescapeFragment = exports.schemaRefOrVal = exports.schemaHasRulesButRef = exports.schemaHasRules = exports.checkUnknownRules = exports.alwaysValidSchema = exports.toHash = void 0;
   var codegen_1 = require_codegen();
   var code_1 = require_code();
   function toHash(arr) {
@@ -1062,7 +1039,7 @@ var require_util = __commonJS((exports2) => {
       hash[item] = true;
     return hash;
   }
-  exports2.toHash = toHash;
+  exports.toHash = toHash;
   function alwaysValidSchema(it, schema) {
     if (typeof schema == "boolean")
       return schema;
@@ -1071,7 +1048,7 @@ var require_util = __commonJS((exports2) => {
     checkUnknownRules(it, schema);
     return !schemaHasRules(schema, it.self.RULES.all);
   }
-  exports2.alwaysValidSchema = alwaysValidSchema;
+  exports.alwaysValidSchema = alwaysValidSchema;
   function checkUnknownRules(it, schema = it.schema) {
     const { opts, self: self2 } = it;
     if (!opts.strictSchema)
@@ -1084,7 +1061,7 @@ var require_util = __commonJS((exports2) => {
         checkStrictMode(it, `unknown keyword: "${key}"`);
     }
   }
-  exports2.checkUnknownRules = checkUnknownRules;
+  exports.checkUnknownRules = checkUnknownRules;
   function schemaHasRules(schema, rules) {
     if (typeof schema == "boolean")
       return !schema;
@@ -1093,7 +1070,7 @@ var require_util = __commonJS((exports2) => {
         return true;
     return false;
   }
-  exports2.schemaHasRules = schemaHasRules;
+  exports.schemaHasRules = schemaHasRules;
   function schemaHasRulesButRef(schema, RULES) {
     if (typeof schema == "boolean")
       return !schema;
@@ -1102,7 +1079,7 @@ var require_util = __commonJS((exports2) => {
         return true;
     return false;
   }
-  exports2.schemaHasRulesButRef = schemaHasRulesButRef;
+  exports.schemaHasRulesButRef = schemaHasRulesButRef;
   function schemaRefOrVal({ topSchemaRef, schemaPath }, schema, keyword, $data) {
     if (!$data) {
       if (typeof schema == "number" || typeof schema == "boolean")
@@ -1112,25 +1089,25 @@ var require_util = __commonJS((exports2) => {
     }
     return (0, codegen_1._)`${topSchemaRef}${schemaPath}${(0, codegen_1.getProperty)(keyword)}`;
   }
-  exports2.schemaRefOrVal = schemaRefOrVal;
+  exports.schemaRefOrVal = schemaRefOrVal;
   function unescapeFragment(str) {
     return unescapeJsonPointer(decodeURIComponent(str));
   }
-  exports2.unescapeFragment = unescapeFragment;
+  exports.unescapeFragment = unescapeFragment;
   function escapeFragment(str) {
     return encodeURIComponent(escapeJsonPointer(str));
   }
-  exports2.escapeFragment = escapeFragment;
+  exports.escapeFragment = escapeFragment;
   function escapeJsonPointer(str) {
     if (typeof str == "number")
       return `${str}`;
     return str.replace(/~/g, "~0").replace(/\//g, "~1");
   }
-  exports2.escapeJsonPointer = escapeJsonPointer;
+  exports.escapeJsonPointer = escapeJsonPointer;
   function unescapeJsonPointer(str) {
     return str.replace(/~1/g, "/").replace(/~0/g, "~");
   }
-  exports2.unescapeJsonPointer = unescapeJsonPointer;
+  exports.unescapeJsonPointer = unescapeJsonPointer;
   function eachItem(xs, f) {
     if (Array.isArray(xs)) {
       for (const x of xs)
@@ -1139,14 +1116,14 @@ var require_util = __commonJS((exports2) => {
       f(xs);
     }
   }
-  exports2.eachItem = eachItem;
+  exports.eachItem = eachItem;
   function makeMergeEvaluated({ mergeNames, mergeToName, mergeValues: mergeValues32, resultToName }) {
     return (gen, from, to, toName) => {
       const res = to === void 0 ? from : to instanceof codegen_1.Name ? (from instanceof codegen_1.Name ? mergeNames(gen, from, to) : mergeToName(gen, from, to), to) : from instanceof codegen_1.Name ? (mergeToName(gen, to, from), from) : mergeValues32(from, to);
       return toName === codegen_1.Name && !(res instanceof codegen_1.Name) ? resultToName(gen, res) : res;
     };
   }
-  exports2.mergeEvaluated = {
+  exports.mergeEvaluated = {
     props: makeMergeEvaluated({
       mergeNames: (gen, from, to) => gen.if((0, codegen_1._)`${to} !== true && ${from} !== undefined`, () => {
         gen.if((0, codegen_1._)`${from} === true`, () => gen.assign(to, true), () => gen.assign(to, (0, codegen_1._)`${to} || {}`).code((0, codegen_1._)`Object.assign(${to}, ${from})`));
@@ -1177,11 +1154,11 @@ var require_util = __commonJS((exports2) => {
       setEvaluated(gen, props, ps);
     return props;
   }
-  exports2.evaluatedPropsToName = evaluatedPropsToName;
+  exports.evaluatedPropsToName = evaluatedPropsToName;
   function setEvaluated(gen, props, ps) {
     Object.keys(ps).forEach((p) => gen.assign((0, codegen_1._)`${props}${(0, codegen_1.getProperty)(p)}`, true));
   }
-  exports2.setEvaluated = setEvaluated;
+  exports.setEvaluated = setEvaluated;
   var snippets = {};
   function useFunc(gen, f) {
     return gen.scopeValue("func", {
@@ -1189,12 +1166,12 @@ var require_util = __commonJS((exports2) => {
       code: snippets[f.code] || (snippets[f.code] = new code_1._Code(f.code))
     });
   }
-  exports2.useFunc = useFunc;
+  exports.useFunc = useFunc;
   var Type;
   (function(Type2) {
     Type2[Type2["Num"] = 0] = "Num";
     Type2[Type2["Str"] = 1] = "Str";
-  })(Type || (exports2.Type = Type = {}));
+  })(Type || (exports.Type = Type = {}));
   function getErrorPath(dataProp, dataPropType, jsPropertySyntax) {
     if (dataProp instanceof codegen_1.Name) {
       const isNumber = dataPropType === Type.Num;
@@ -1202,7 +1179,7 @@ var require_util = __commonJS((exports2) => {
     }
     return jsPropertySyntax ? (0, codegen_1.getProperty)(dataProp).toString() : "/" + escapeJsonPointer(dataProp);
   }
-  exports2.getErrorPath = getErrorPath;
+  exports.getErrorPath = getErrorPath;
   function checkStrictMode(it, msg, mode = it.opts.strictSchema) {
     if (!mode)
       return;
@@ -1211,10 +1188,10 @@ var require_util = __commonJS((exports2) => {
       throw new Error(msg);
     it.self.logger.warn(msg);
   }
-  exports2.checkStrictMode = checkStrictMode;
+  exports.checkStrictMode = checkStrictMode;
 });
-var require_names = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_names = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var codegen_1 = require_codegen();
   var names = {
     data: new codegen_1.Name("data"),
@@ -1234,21 +1211,21 @@ var require_names = __commonJS((exports2) => {
     jsonLen: new codegen_1.Name("jsonLen"),
     jsonPart: new codegen_1.Name("jsonPart")
   };
-  exports2.default = names;
+  exports.default = names;
 });
-var require_errors = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.extendErrors = exports2.resetErrorsCount = exports2.reportExtraError = exports2.reportError = exports2.keyword$DataError = exports2.keywordError = void 0;
+var require_errors = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.extendErrors = exports.resetErrorsCount = exports.reportExtraError = exports.reportError = exports.keyword$DataError = exports.keywordError = void 0;
   var codegen_1 = require_codegen();
   var util_1 = require_util();
   var names_1 = require_names();
-  exports2.keywordError = {
+  exports.keywordError = {
     message: ({ keyword }) => (0, codegen_1.str)`must pass "${keyword}" keyword validation`
   };
-  exports2.keyword$DataError = {
+  exports.keyword$DataError = {
     message: ({ keyword, schemaType }) => schemaType ? (0, codegen_1.str)`"${keyword}" keyword must be ${schemaType} ($data)` : (0, codegen_1.str)`"${keyword}" keyword is invalid ($data)`
   };
-  function reportError(cxt, error2 = exports2.keywordError, errorPaths, overrideAllErrors) {
+  function reportError(cxt, error2 = exports.keywordError, errorPaths, overrideAllErrors) {
     const { it } = cxt;
     const { gen, compositeRule, allErrors } = it;
     const errObj = errorObjectCode(cxt, error2, errorPaths);
@@ -1258,8 +1235,8 @@ var require_errors = __commonJS((exports2) => {
       returnErrors(it, (0, codegen_1._)`[${errObj}]`);
     }
   }
-  exports2.reportError = reportError;
-  function reportExtraError(cxt, error2 = exports2.keywordError, errorPaths) {
+  exports.reportError = reportError;
+  function reportExtraError(cxt, error2 = exports.keywordError, errorPaths) {
     const { it } = cxt;
     const { gen, compositeRule, allErrors } = it;
     const errObj = errorObjectCode(cxt, error2, errorPaths);
@@ -1268,12 +1245,12 @@ var require_errors = __commonJS((exports2) => {
       returnErrors(it, names_1.default.vErrors);
     }
   }
-  exports2.reportExtraError = reportExtraError;
+  exports.reportExtraError = reportExtraError;
   function resetErrorsCount(gen, errsCount) {
     gen.assign(names_1.default.errors, errsCount);
     gen.if((0, codegen_1._)`${names_1.default.vErrors} !== null`, () => gen.if(errsCount, () => gen.assign((0, codegen_1._)`${names_1.default.vErrors}.length`, errsCount), () => gen.assign(names_1.default.vErrors, null)));
   }
-  exports2.resetErrorsCount = resetErrorsCount;
+  exports.resetErrorsCount = resetErrorsCount;
   function extendErrors({ gen, keyword, schemaValue, data, errsCount, it }) {
     if (errsCount === void 0)
       throw new Error("ajv implementation error");
@@ -1288,7 +1265,7 @@ var require_errors = __commonJS((exports2) => {
       }
     });
   }
-  exports2.extendErrors = extendErrors;
+  exports.extendErrors = extendErrors;
   function addError(gen, errObj) {
     const err = gen.const("err", errObj);
     gen.if((0, codegen_1._)`${names_1.default.vErrors} === null`, () => gen.assign(names_1.default.vErrors, (0, codegen_1._)`[${err}]`), (0, codegen_1._)`${names_1.default.vErrors}.push(${err})`);
@@ -1352,9 +1329,9 @@ var require_errors = __commonJS((exports2) => {
       keyValues.push([E.propertyName, propertyName]);
   }
 });
-var require_boolSchema = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.boolOrEmptySchema = exports2.topBoolOrEmptySchema = void 0;
+var require_boolSchema = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.boolOrEmptySchema = exports.topBoolOrEmptySchema = void 0;
   var errors_1 = require_errors();
   var codegen_1 = require_codegen();
   var names_1 = require_names();
@@ -1372,7 +1349,7 @@ var require_boolSchema = __commonJS((exports2) => {
       gen.return(true);
     }
   }
-  exports2.topBoolOrEmptySchema = topBoolOrEmptySchema;
+  exports.topBoolOrEmptySchema = topBoolOrEmptySchema;
   function boolOrEmptySchema(it, valid) {
     const { gen, schema } = it;
     if (schema === false) {
@@ -1382,7 +1359,7 @@ var require_boolSchema = __commonJS((exports2) => {
       gen.var(valid, true);
     }
   }
-  exports2.boolOrEmptySchema = boolOrEmptySchema;
+  exports.boolOrEmptySchema = boolOrEmptySchema;
   function falseSchemaError(it, overrideAllErrors) {
     const { gen, data } = it;
     const cxt = {
@@ -1398,15 +1375,15 @@ var require_boolSchema = __commonJS((exports2) => {
     (0, errors_1.reportError)(cxt, boolError, void 0, overrideAllErrors);
   }
 });
-var require_rules = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.getRules = exports2.isJSONType = void 0;
+var require_rules = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.getRules = exports.isJSONType = void 0;
   var _jsonTypes = ["string", "number", "integer", "boolean", "null", "object", "array"];
   var jsonTypes = new Set(_jsonTypes);
   function isJSONType(x) {
     return typeof x == "string" && jsonTypes.has(x);
   }
-  exports2.isJSONType = isJSONType;
+  exports.isJSONType = isJSONType;
   function getRules() {
     const groups = {
       number: { type: "number", rules: [] },
@@ -1422,29 +1399,29 @@ var require_rules = __commonJS((exports2) => {
       keywords: {}
     };
   }
-  exports2.getRules = getRules;
+  exports.getRules = getRules;
 });
-var require_applicability = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.shouldUseRule = exports2.shouldUseGroup = exports2.schemaHasRulesForType = void 0;
+var require_applicability = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.shouldUseRule = exports.shouldUseGroup = exports.schemaHasRulesForType = void 0;
   function schemaHasRulesForType({ schema, self: self2 }, type) {
     const group = self2.RULES.types[type];
     return group && group !== true && shouldUseGroup(schema, group);
   }
-  exports2.schemaHasRulesForType = schemaHasRulesForType;
+  exports.schemaHasRulesForType = schemaHasRulesForType;
   function shouldUseGroup(schema, group) {
     return group.rules.some((rule) => shouldUseRule(schema, rule));
   }
-  exports2.shouldUseGroup = shouldUseGroup;
+  exports.shouldUseGroup = shouldUseGroup;
   function shouldUseRule(schema, rule) {
     var _a;
     return schema[rule.keyword] !== void 0 || ((_a = rule.definition.implements) === null || _a === void 0 ? void 0 : _a.some((kwd) => schema[kwd] !== void 0));
   }
-  exports2.shouldUseRule = shouldUseRule;
+  exports.shouldUseRule = shouldUseRule;
 });
-var require_dataType = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.reportTypeError = exports2.checkDataTypes = exports2.checkDataType = exports2.coerceAndCheckDataType = exports2.getJSONTypes = exports2.getSchemaTypes = exports2.DataType = void 0;
+var require_dataType = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.reportTypeError = exports.checkDataTypes = exports.checkDataType = exports.coerceAndCheckDataType = exports.getJSONTypes = exports.getSchemaTypes = exports.DataType = void 0;
   var rules_1 = require_rules();
   var applicability_1 = require_applicability();
   var errors_1 = require_errors();
@@ -1454,7 +1431,7 @@ var require_dataType = __commonJS((exports2) => {
   (function(DataType2) {
     DataType2[DataType2["Correct"] = 0] = "Correct";
     DataType2[DataType2["Wrong"] = 1] = "Wrong";
-  })(DataType || (exports2.DataType = DataType = {}));
+  })(DataType || (exports.DataType = DataType = {}));
   function getSchemaTypes(schema) {
     const types = getJSONTypes(schema.type);
     const hasNull = types.includes("null");
@@ -1470,14 +1447,14 @@ var require_dataType = __commonJS((exports2) => {
     }
     return types;
   }
-  exports2.getSchemaTypes = getSchemaTypes;
+  exports.getSchemaTypes = getSchemaTypes;
   function getJSONTypes(ts) {
     const types = Array.isArray(ts) ? ts : ts ? [ts] : [];
     if (types.every(rules_1.isJSONType))
       return types;
     throw new Error("type must be JSONType or JSONType[]: " + types.join(","));
   }
-  exports2.getJSONTypes = getJSONTypes;
+  exports.getJSONTypes = getJSONTypes;
   function coerceAndCheckDataType(it, types) {
     const { gen, data, opts } = it;
     const coerceTo = coerceToTypes(types, opts.coerceTypes);
@@ -1493,7 +1470,7 @@ var require_dataType = __commonJS((exports2) => {
     }
     return checkTypes;
   }
-  exports2.coerceAndCheckDataType = coerceAndCheckDataType;
+  exports.coerceAndCheckDataType = coerceAndCheckDataType;
   var COERCIBLE = /* @__PURE__ */ new Set(["string", "number", "integer", "boolean", "null"]);
   function coerceToTypes(types, coerceTypes) {
     return coerceTypes ? types.filter((t) => COERCIBLE.has(t) || coerceTypes === "array" && t === "array") : [];
@@ -1573,7 +1550,7 @@ var require_dataType = __commonJS((exports2) => {
       return (0, codegen_1.and)((0, codegen_1._)`typeof ${data} == "number"`, _cond, strictNums ? (0, codegen_1._)`isFinite(${data})` : codegen_1.nil);
     }
   }
-  exports2.checkDataType = checkDataType;
+  exports.checkDataType = checkDataType;
   function checkDataTypes(dataTypes, data, strictNums, correct) {
     if (dataTypes.length === 1) {
       return checkDataType(dataTypes[0], data, strictNums, correct);
@@ -1595,7 +1572,7 @@ var require_dataType = __commonJS((exports2) => {
       cond = (0, codegen_1.and)(cond, checkDataType(t, data, strictNums, correct));
     return cond;
   }
-  exports2.checkDataTypes = checkDataTypes;
+  exports.checkDataTypes = checkDataTypes;
   var typeError = {
     message: ({ schema }) => `must be ${schema}`,
     params: ({ schema, schemaValue }) => typeof schema == "string" ? (0, codegen_1._)`{type: ${schema}}` : (0, codegen_1._)`{type: ${schemaValue}}`
@@ -1604,7 +1581,7 @@ var require_dataType = __commonJS((exports2) => {
     const cxt = getTypeErrorContext(it);
     (0, errors_1.reportError)(cxt, typeError);
   }
-  exports2.reportTypeError = reportTypeError;
+  exports.reportTypeError = reportTypeError;
   function getTypeErrorContext(it) {
     const { gen, data, schema } = it;
     const schemaCode = (0, util_1.schemaRefOrVal)(it, schema, "type");
@@ -1621,9 +1598,9 @@ var require_dataType = __commonJS((exports2) => {
     };
   }
 });
-var require_defaults = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.assignDefaults = void 0;
+var require_defaults = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.assignDefaults = void 0;
   var codegen_1 = require_codegen();
   var util_1 = require_util();
   function assignDefaults(it, ty) {
@@ -1636,7 +1613,7 @@ var require_defaults = __commonJS((exports2) => {
       items.forEach((sch, i) => assignDefault(it, i, sch.default));
     }
   }
-  exports2.assignDefaults = assignDefaults;
+  exports.assignDefaults = assignDefaults;
   function assignDefault(it, prop, defaultValue) {
     const { gen, compositeRule, data, opts } = it;
     if (defaultValue === void 0)
@@ -1653,9 +1630,9 @@ var require_defaults = __commonJS((exports2) => {
     gen.if(condition, (0, codegen_1._)`${childData} = ${(0, codegen_1.stringify)(defaultValue)}`);
   }
 });
-var require_code2 = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.validateUnion = exports2.validateArray = exports2.usePattern = exports2.callValidateCode = exports2.schemaProperties = exports2.allSchemaProperties = exports2.noPropertyInData = exports2.propertyInData = exports2.isOwnProperty = exports2.hasPropFunc = exports2.reportMissingProp = exports2.checkMissingProp = exports2.checkReportMissingProp = void 0;
+var require_code2 = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.validateUnion = exports.validateArray = exports.usePattern = exports.callValidateCode = exports.schemaProperties = exports.allSchemaProperties = exports.noPropertyInData = exports.propertyInData = exports.isOwnProperty = exports.hasPropFunc = exports.reportMissingProp = exports.checkMissingProp = exports.checkReportMissingProp = void 0;
   var codegen_1 = require_codegen();
   var util_1 = require_util();
   var names_1 = require_names();
@@ -1667,45 +1644,45 @@ var require_code2 = __commonJS((exports2) => {
       cxt.error();
     });
   }
-  exports2.checkReportMissingProp = checkReportMissingProp;
+  exports.checkReportMissingProp = checkReportMissingProp;
   function checkMissingProp({ gen, data, it: { opts } }, properties, missing) {
     return (0, codegen_1.or)(...properties.map((prop) => (0, codegen_1.and)(noPropertyInData(gen, data, prop, opts.ownProperties), (0, codegen_1._)`${missing} = ${prop}`)));
   }
-  exports2.checkMissingProp = checkMissingProp;
+  exports.checkMissingProp = checkMissingProp;
   function reportMissingProp(cxt, missing) {
     cxt.setParams({ missingProperty: missing }, true);
     cxt.error();
   }
-  exports2.reportMissingProp = reportMissingProp;
+  exports.reportMissingProp = reportMissingProp;
   function hasPropFunc(gen) {
     return gen.scopeValue("func", {
       ref: Object.prototype.hasOwnProperty,
       code: (0, codegen_1._)`Object.prototype.hasOwnProperty`
     });
   }
-  exports2.hasPropFunc = hasPropFunc;
+  exports.hasPropFunc = hasPropFunc;
   function isOwnProperty(gen, data, property) {
     return (0, codegen_1._)`${hasPropFunc(gen)}.call(${data}, ${property})`;
   }
-  exports2.isOwnProperty = isOwnProperty;
+  exports.isOwnProperty = isOwnProperty;
   function propertyInData(gen, data, property, ownProperties) {
     const cond = (0, codegen_1._)`${data}${(0, codegen_1.getProperty)(property)} !== undefined`;
     return ownProperties ? (0, codegen_1._)`${cond} && ${isOwnProperty(gen, data, property)}` : cond;
   }
-  exports2.propertyInData = propertyInData;
+  exports.propertyInData = propertyInData;
   function noPropertyInData(gen, data, property, ownProperties) {
     const cond = (0, codegen_1._)`${data}${(0, codegen_1.getProperty)(property)} === undefined`;
     return ownProperties ? (0, codegen_1.or)(cond, (0, codegen_1.not)(isOwnProperty(gen, data, property))) : cond;
   }
-  exports2.noPropertyInData = noPropertyInData;
+  exports.noPropertyInData = noPropertyInData;
   function allSchemaProperties(schemaMap) {
     return schemaMap ? Object.keys(schemaMap).filter((p) => p !== "__proto__") : [];
   }
-  exports2.allSchemaProperties = allSchemaProperties;
+  exports.allSchemaProperties = allSchemaProperties;
   function schemaProperties(it, schemaMap) {
     return allSchemaProperties(schemaMap).filter((p) => !(0, util_1.alwaysValidSchema)(it, schemaMap[p]));
   }
-  exports2.schemaProperties = schemaProperties;
+  exports.schemaProperties = schemaProperties;
   function callValidateCode({ schemaCode, data, it: { gen, topSchemaRef, schemaPath, errorPath }, it }, func, context, passSchema) {
     const dataAndSchema = passSchema ? (0, codegen_1._)`${schemaCode}, ${data}, ${topSchemaRef}${schemaPath}` : data;
     const valCxt = [
@@ -1719,7 +1696,7 @@ var require_code2 = __commonJS((exports2) => {
     const args = (0, codegen_1._)`${dataAndSchema}, ${gen.object(...valCxt)}`;
     return context !== codegen_1.nil ? (0, codegen_1._)`${func}.call(${context}, ${args})` : (0, codegen_1._)`${func}(${args})`;
   }
-  exports2.callValidateCode = callValidateCode;
+  exports.callValidateCode = callValidateCode;
   var newRegExp = (0, codegen_1._)`new RegExp`;
   function usePattern({ gen, it: { opts } }, pattern) {
     const u = opts.unicodeRegExp ? "u" : "";
@@ -1731,7 +1708,7 @@ var require_code2 = __commonJS((exports2) => {
       code: (0, codegen_1._)`${regExp.code === "new RegExp" ? newRegExp : (0, util_2.useFunc)(gen, regExp)}(${pattern}, ${u})`
     });
   }
-  exports2.usePattern = usePattern;
+  exports.usePattern = usePattern;
   function validateArray(cxt) {
     const { gen, data, keyword, it } = cxt;
     const valid = gen.name("valid");
@@ -1755,7 +1732,7 @@ var require_code2 = __commonJS((exports2) => {
       });
     }
   }
-  exports2.validateArray = validateArray;
+  exports.validateArray = validateArray;
   function validateUnion(cxt) {
     const { gen, schema, keyword, it } = cxt;
     if (!Array.isArray(schema))
@@ -1778,11 +1755,11 @@ var require_code2 = __commonJS((exports2) => {
     }));
     cxt.result(valid, () => cxt.reset(), () => cxt.error(true));
   }
-  exports2.validateUnion = validateUnion;
+  exports.validateUnion = validateUnion;
 });
-var require_keyword = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.validateKeywordUsage = exports2.validSchemaType = exports2.funcKeywordCode = exports2.macroKeywordCode = void 0;
+var require_keyword = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.validateKeywordUsage = exports.validSchemaType = exports.funcKeywordCode = exports.macroKeywordCode = void 0;
   var codegen_1 = require_codegen();
   var names_1 = require_names();
   var code_1 = require_code2();
@@ -1803,7 +1780,7 @@ var require_keyword = __commonJS((exports2) => {
     }, valid);
     cxt.pass(valid, () => cxt.error(true));
   }
-  exports2.macroKeywordCode = macroKeywordCode;
+  exports.macroKeywordCode = macroKeywordCode;
   function funcKeywordCode(cxt, def) {
     var _a;
     const { gen, keyword, schema, parentSchema, $data, it } = cxt;
@@ -1847,7 +1824,7 @@ var require_keyword = __commonJS((exports2) => {
       gen.if((0, codegen_1.not)((_a2 = def.valid) !== null && _a2 !== void 0 ? _a2 : valid), errors3);
     }
   }
-  exports2.funcKeywordCode = funcKeywordCode;
+  exports.funcKeywordCode = funcKeywordCode;
   function modifyData(cxt) {
     const { gen, data, it } = cxt;
     gen.if(it.parentData, () => gen.assign(data, (0, codegen_1._)`${it.parentData}[${it.parentDataProperty}]`));
@@ -1871,7 +1848,7 @@ var require_keyword = __commonJS((exports2) => {
   function validSchemaType(schema, schemaType, allowUndefined = false) {
     return !schemaType.length || schemaType.some((st) => st === "array" ? Array.isArray(schema) : st === "object" ? schema && typeof schema == "object" && !Array.isArray(schema) : typeof schema == st || allowUndefined && typeof schema == "undefined");
   }
-  exports2.validSchemaType = validSchemaType;
+  exports.validSchemaType = validSchemaType;
   function validateKeywordUsage({ schema, opts, self: self2, errSchemaPath }, def, keyword) {
     if (Array.isArray(def.keyword) ? !def.keyword.includes(keyword) : def.keyword !== keyword) {
       throw new Error("ajv implementation error");
@@ -1891,11 +1868,11 @@ var require_keyword = __commonJS((exports2) => {
       }
     }
   }
-  exports2.validateKeywordUsage = validateKeywordUsage;
+  exports.validateKeywordUsage = validateKeywordUsage;
 });
-var require_subschema = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.extendSubschemaMode = exports2.extendSubschemaData = exports2.getSubschema = void 0;
+var require_subschema = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.extendSubschemaMode = exports.extendSubschemaData = exports.getSubschema = void 0;
   var codegen_1 = require_codegen();
   var util_1 = require_util();
   function getSubschema(it, { keyword, schemaProp, schema, schemaPath, errSchemaPath, topSchemaRef }) {
@@ -1927,7 +1904,7 @@ var require_subschema = __commonJS((exports2) => {
     }
     throw new Error('either "keyword" or "schema" must be passed');
   }
-  exports2.getSubschema = getSubschema;
+  exports.getSubschema = getSubschema;
   function extendSubschemaData(subschema, it, { dataProp, dataPropType: dpType, data, dataTypes, propertyName }) {
     if (data !== void 0 && dataProp !== void 0) {
       throw new Error('both "data" and "dataProp" passed, only one allowed');
@@ -1958,7 +1935,7 @@ var require_subschema = __commonJS((exports2) => {
       subschema.dataNames = [...it.dataNames, _nextData];
     }
   }
-  exports2.extendSubschemaData = extendSubschemaData;
+  exports.extendSubschemaData = extendSubschemaData;
   function extendSubschemaMode(subschema, { jtdDiscriminator, jtdMetadata, compositeRule, createErrors, allErrors }) {
     if (compositeRule !== void 0)
       subschema.compositeRule = compositeRule;
@@ -1969,10 +1946,10 @@ var require_subschema = __commonJS((exports2) => {
     subschema.jtdDiscriminator = jtdDiscriminator;
     subschema.jtdMetadata = jtdMetadata;
   }
-  exports2.extendSubschemaMode = extendSubschemaMode;
+  exports.extendSubschemaMode = extendSubschemaMode;
 });
-var require_fast_deep_equal = __commonJS((exports2, module2) => {
-  module2.exports = function equal(a, b) {
+var require_fast_deep_equal = __commonJS((exports, module) => {
+  module.exports = function equal(a, b) {
     if (a === b)
       return true;
     if (a && b && typeof a == "object" && typeof b == "object") {
@@ -2011,8 +1988,8 @@ var require_fast_deep_equal = __commonJS((exports2, module2) => {
     return a !== a && b !== b;
   };
 });
-var require_json_schema_traverse = __commonJS((exports2, module2) => {
-  var traverse = module2.exports = function(schema, opts, cb) {
+var require_json_schema_traverse = __commonJS((exports, module) => {
+  var traverse = module.exports = function(schema, opts, cb) {
     if (typeof opts == "function") {
       cb = opts;
       opts = {};
@@ -2094,9 +2071,9 @@ var require_json_schema_traverse = __commonJS((exports2, module2) => {
     return str.replace(/~/g, "~0").replace(/\//g, "~1");
   }
 });
-var require_resolve = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.getSchemaRefs = exports2.resolveUrl = exports2.normalizeId = exports2._getFullPath = exports2.getFullPath = exports2.inlineRef = void 0;
+var require_resolve = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.getSchemaRefs = exports.resolveUrl = exports.normalizeId = exports._getFullPath = exports.getFullPath = exports.inlineRef = void 0;
   var util_1 = require_util();
   var equal = require_fast_deep_equal();
   var traverse = require_json_schema_traverse();
@@ -2127,7 +2104,7 @@ var require_resolve = __commonJS((exports2) => {
       return false;
     return countKeys(schema) <= limit;
   }
-  exports2.inlineRef = inlineRef;
+  exports.inlineRef = inlineRef;
   var REF_KEYWORDS = /* @__PURE__ */ new Set([
     "$ref",
     "$recursiveRef",
@@ -2169,22 +2146,22 @@ var require_resolve = __commonJS((exports2) => {
     const p = resolver.parse(id);
     return _getFullPath(resolver, p);
   }
-  exports2.getFullPath = getFullPath;
+  exports.getFullPath = getFullPath;
   function _getFullPath(resolver, p) {
     const serialized = resolver.serialize(p);
     return serialized.split("#")[0] + "#";
   }
-  exports2._getFullPath = _getFullPath;
+  exports._getFullPath = _getFullPath;
   var TRAILING_SLASH_HASH = /#\/?$/;
   function normalizeId(id) {
     return id ? id.replace(TRAILING_SLASH_HASH, "") : "";
   }
-  exports2.normalizeId = normalizeId;
+  exports.normalizeId = normalizeId;
   function resolveUrl(resolver, baseId, id) {
     id = normalizeId(id);
     return resolver.resolve(baseId, id);
   }
-  exports2.resolveUrl = resolveUrl;
+  exports.resolveUrl = resolveUrl;
   var ANCHOR = /^[a-z_][-a-z0-9._]*$/i;
   function getSchemaRefs(schema, baseId) {
     if (typeof schema == "boolean")
@@ -2243,11 +2220,11 @@ var require_resolve = __commonJS((exports2) => {
       return new Error(`reference "${ref}" resolves to more than one schema`);
     }
   }
-  exports2.getSchemaRefs = getSchemaRefs;
+  exports.getSchemaRefs = getSchemaRefs;
 });
-var require_validate = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.getData = exports2.KeywordCxt = exports2.validateFunctionCode = void 0;
+var require_validate = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.getData = exports.KeywordCxt = exports.validateFunctionCode = void 0;
   var boolSchema_1 = require_boolSchema();
   var dataType_1 = require_dataType();
   var applicability_1 = require_applicability();
@@ -2270,7 +2247,7 @@ var require_validate = __commonJS((exports2) => {
     }
     validateFunction(it, () => (0, boolSchema_1.topBoolOrEmptySchema)(it));
   }
-  exports2.validateFunctionCode = validateFunctionCode;
+  exports.validateFunctionCode = validateFunctionCode;
   function validateFunction({ gen, validateName, schema, schemaEnv, opts }, body) {
     if (opts.code.es5) {
       gen.func(validateName, (0, codegen_1._)`${names_1.default.data}, ${names_1.default.valCxt}`, schemaEnv.$async, () => {
@@ -2690,7 +2667,7 @@ var require_validate = __commonJS((exports2) => {
       }
     }
   }
-  exports2.KeywordCxt = KeywordCxt;
+  exports.KeywordCxt = KeywordCxt;
   function keywordCode(it, keyword, def, ruleType) {
     const cxt = new KeywordCxt(it, def, keyword);
     if ("code" in def) {
@@ -2745,10 +2722,10 @@ var require_validate = __commonJS((exports2) => {
       return `Cannot access ${pointerType} ${up} levels up, current level is ${dataLevel}`;
     }
   }
-  exports2.getData = getData;
+  exports.getData = getData;
 });
-var require_validation_error = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_validation_error = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   class ValidationError extends Error {
     constructor(errors3) {
       super("validation failed");
@@ -2756,10 +2733,10 @@ var require_validation_error = __commonJS((exports2) => {
       this.ajv = this.validation = true;
     }
   }
-  exports2.default = ValidationError;
+  exports.default = ValidationError;
 });
-var require_ref_error = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_ref_error = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var resolve_1 = require_resolve();
   class MissingRefError extends Error {
     constructor(resolver, baseId, ref, msg) {
@@ -2768,11 +2745,11 @@ var require_ref_error = __commonJS((exports2) => {
       this.missingSchema = (0, resolve_1.normalizeId)((0, resolve_1.getFullPath)(resolver, this.missingRef));
     }
   }
-  exports2.default = MissingRefError;
+  exports.default = MissingRefError;
 });
-var require_compile = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.resolveSchema = exports2.getCompilingSchema = exports2.resolveRef = exports2.compileSchema = exports2.SchemaEnv = void 0;
+var require_compile = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.resolveSchema = exports.getCompilingSchema = exports.resolveRef = exports.compileSchema = exports.SchemaEnv = void 0;
   var codegen_1 = require_codegen();
   var validation_error_1 = require_validation_error();
   var names_1 = require_names();
@@ -2798,7 +2775,7 @@ var require_compile = __commonJS((exports2) => {
       this.refs = {};
     }
   }
-  exports2.SchemaEnv = SchemaEnv;
+  exports.SchemaEnv = SchemaEnv;
   function compileSchema(sch) {
     const _sch = getCompilingSchema.call(this, sch);
     if (_sch)
@@ -2883,7 +2860,7 @@ var require_compile = __commonJS((exports2) => {
       this._compilations.delete(sch);
     }
   }
-  exports2.compileSchema = compileSchema;
+  exports.compileSchema = compileSchema;
   function resolveRef(root2, baseId, ref) {
     var _a;
     ref = (0, resolve_1.resolveUrl)(this.opts.uriResolver, baseId, ref);
@@ -2901,7 +2878,7 @@ var require_compile = __commonJS((exports2) => {
       return;
     return root2.refs[ref] = inlineOrCompile.call(this, _sch);
   }
-  exports2.resolveRef = resolveRef;
+  exports.resolveRef = resolveRef;
   function inlineOrCompile(sch) {
     if ((0, resolve_1.inlineRef)(sch.schema, this.opts.inlineRefs))
       return sch.schema;
@@ -2913,7 +2890,7 @@ var require_compile = __commonJS((exports2) => {
         return sch;
     }
   }
-  exports2.getCompilingSchema = getCompilingSchema;
+  exports.getCompilingSchema = getCompilingSchema;
   function sameSchemaEnv(s1, s2) {
     return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
   }
@@ -2952,7 +2929,7 @@ var require_compile = __commonJS((exports2) => {
     }
     return getJsonPointer.call(this, p, schOrRef);
   }
-  exports2.resolveSchema = resolveSchema;
+  exports.resolveSchema = resolveSchema;
   var PREVENT_SCOPE_CHANGE = /* @__PURE__ */ new Set([
     "properties",
     "patternProperties",
@@ -2988,8 +2965,8 @@ var require_compile = __commonJS((exports2) => {
     return;
   }
 });
-var require_data = __commonJS((exports2, module2) => {
-  module2.exports = {
+var require_data = __commonJS((exports, module) => {
+  module.exports = {
     $id: "https://raw.githubusercontent.com/ajv-validator/ajv/master/lib/refs/data.json#",
     description: "Meta-schema for $data reference (JSON AnySchema extension proposal)",
     type: "object",
@@ -3003,7 +2980,7 @@ var require_data = __commonJS((exports2, module2) => {
     additionalProperties: false
   };
 });
-var require_scopedChars = __commonJS((exports2, module2) => {
+var require_scopedChars = __commonJS((exports, module) => {
   var HEX = {
     0: 0,
     1: 1,
@@ -3028,11 +3005,11 @@ var require_scopedChars = __commonJS((exports2, module2) => {
     f: 15,
     F: 15
   };
-  module2.exports = {
+  module.exports = {
     HEX
   };
 });
-var require_utils = __commonJS((exports2, module2) => {
+var require_utils = __commonJS((exports, module) => {
   var { HEX } = require_scopedChars();
   var IPV4_REG = /^(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)$/u;
   function normalizeIPv4(host) {
@@ -3254,7 +3231,7 @@ var require_utils = __commonJS((exports2, module2) => {
     }
     return uriTokens.length ? uriTokens.join("") : void 0;
   }
-  module2.exports = {
+  module.exports = {
     recomposeAuthority,
     normalizeComponentEncoding,
     removeDotSegments,
@@ -3263,7 +3240,7 @@ var require_utils = __commonJS((exports2, module2) => {
     stringArrayToHexStripped
   };
 });
-var require_schemes = __commonJS((exports2, module2) => {
+var require_schemes = __commonJS((exports, module) => {
   var UUID_REG = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/iu;
   var URN_REG = /([\da-z][\d\-a-z]{0,31}):((?:[\w!$'()*+,\-.:;=@]|%[\da-f]{2})+)/iu;
   function isSecure(wsComponents) {
@@ -3402,9 +3379,9 @@ var require_schemes = __commonJS((exports2, module2) => {
     urn,
     "urn:uuid": urnuuid
   };
-  module2.exports = SCHEMES;
+  module.exports = SCHEMES;
 });
-var require_fast_uri = __commonJS((exports2, module2) => {
+var require_fast_uri = __commonJS((exports, module) => {
   var { normalizeIPv6, normalizeIPv4, removeDotSegments, recomposeAuthority, normalizeComponentEncoding } = require_utils();
   var SCHEMES = require_schemes();
   function normalize(uri, options) {
@@ -3654,40 +3631,40 @@ var require_fast_uri = __commonJS((exports2, module2) => {
     serialize,
     parse: parse6
   };
-  module2.exports = fastUri;
-  module2.exports.default = fastUri;
-  module2.exports.fastUri = fastUri;
+  module.exports = fastUri;
+  module.exports.default = fastUri;
+  module.exports.fastUri = fastUri;
 });
-var require_uri = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_uri = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var uri = require_fast_uri();
   uri.code = 'require("ajv/dist/runtime/uri").default';
-  exports2.default = uri;
+  exports.default = uri;
 });
-var require_core = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.CodeGen = exports2.Name = exports2.nil = exports2.stringify = exports2.str = exports2._ = exports2.KeywordCxt = void 0;
+var require_core = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.CodeGen = exports.Name = exports.nil = exports.stringify = exports.str = exports._ = exports.KeywordCxt = void 0;
   var validate_1 = require_validate();
-  Object.defineProperty(exports2, "KeywordCxt", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "KeywordCxt", { enumerable: true, get: function() {
     return validate_1.KeywordCxt;
   } });
   var codegen_1 = require_codegen();
-  Object.defineProperty(exports2, "_", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "_", { enumerable: true, get: function() {
     return codegen_1._;
   } });
-  Object.defineProperty(exports2, "str", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "str", { enumerable: true, get: function() {
     return codegen_1.str;
   } });
-  Object.defineProperty(exports2, "stringify", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "stringify", { enumerable: true, get: function() {
     return codegen_1.stringify;
   } });
-  Object.defineProperty(exports2, "nil", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "nil", { enumerable: true, get: function() {
     return codegen_1.nil;
   } });
-  Object.defineProperty(exports2, "Name", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "Name", { enumerable: true, get: function() {
     return codegen_1.Name;
   } });
-  Object.defineProperty(exports2, "CodeGen", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "CodeGen", { enumerable: true, get: function() {
     return codegen_1.CodeGen;
   } });
   var validation_error_1 = require_validation_error();
@@ -4128,7 +4105,7 @@ var require_core = __commonJS((exports2) => {
   }
   Ajv.ValidationError = validation_error_1.default;
   Ajv.MissingRefError = ref_error_1.default;
-  exports2.default = Ajv;
+  exports.default = Ajv;
   function checkOptions(checkOpts, options, msg, log = "error") {
     for (const key in checkOpts) {
       const opt = key;
@@ -4257,19 +4234,19 @@ var require_core = __commonJS((exports2) => {
     return { anyOf: [schema, $dataRef] };
   }
 });
-var require_id = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_id = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var def = {
     keyword: "id",
     code() {
       throw new Error('NOT SUPPORTED: keyword "id", use "$id" for schema ID');
     }
   };
-  exports2.default = def;
+  exports.default = def;
 });
-var require_ref = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.callRef = exports2.getValidate = void 0;
+var require_ref = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.callRef = exports.getValidate = void 0;
   var ref_error_1 = require_ref_error();
   var code_1 = require_code2();
   var codegen_1 = require_codegen();
@@ -4320,7 +4297,7 @@ var require_ref = __commonJS((exports2) => {
     const { gen } = cxt;
     return sch.validate ? gen.scopeValue("validate", { ref: sch.validate }) : (0, codegen_1._)`${gen.scopeValue("wrapper", { ref: sch })}.validate`;
   }
-  exports2.getValidate = getValidate;
+  exports.getValidate = getValidate;
   function callRef(cxt, v, sch, $async) {
     const { gen, it } = cxt;
     const { allErrors, schemaEnv: env, opts } = it;
@@ -4381,11 +4358,11 @@ var require_ref = __commonJS((exports2) => {
       }
     }
   }
-  exports2.callRef = callRef;
-  exports2.default = def;
+  exports.callRef = callRef;
+  exports.default = def;
 });
-var require_core2 = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_core2 = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var id_1 = require_id();
   var ref_1 = require_ref();
   var core2 = [
@@ -4398,10 +4375,10 @@ var require_core2 = __commonJS((exports2) => {
     id_1.default,
     ref_1.default
   ];
-  exports2.default = core2;
+  exports.default = core2;
 });
-var require_limitNumber = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_limitNumber = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var codegen_1 = require_codegen();
   var ops = codegen_1.operators;
   var KWDs = {
@@ -4425,10 +4402,10 @@ var require_limitNumber = __commonJS((exports2) => {
       cxt.fail$data((0, codegen_1._)`${data} ${KWDs[keyword].fail} ${schemaCode} || isNaN(${data})`);
     }
   };
-  exports2.default = def;
+  exports.default = def;
 });
-var require_multipleOf = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_multipleOf = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var codegen_1 = require_codegen();
   var error2 = {
     message: ({ schemaCode }) => (0, codegen_1.str)`must be multiple of ${schemaCode}`,
@@ -4448,10 +4425,10 @@ var require_multipleOf = __commonJS((exports2) => {
       cxt.fail$data((0, codegen_1._)`(${schemaCode} === 0 || (${res} = ${data}/${schemaCode}, ${invalid}))`);
     }
   };
-  exports2.default = def;
+  exports.default = def;
 });
-var require_ucs2length = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_ucs2length = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   function ucs2length(str) {
     const len = str.length;
     let length = 0;
@@ -4468,11 +4445,11 @@ var require_ucs2length = __commonJS((exports2) => {
     }
     return length;
   }
-  exports2.default = ucs2length;
+  exports.default = ucs2length;
   ucs2length.code = 'require("ajv/dist/runtime/ucs2length").default';
 });
-var require_limitLength = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_limitLength = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var codegen_1 = require_codegen();
   var util_1 = require_util();
   var ucs2length_1 = require_ucs2length();
@@ -4496,10 +4473,10 @@ var require_limitLength = __commonJS((exports2) => {
       cxt.fail$data((0, codegen_1._)`${len} ${op} ${schemaCode}`);
     }
   };
-  exports2.default = def;
+  exports.default = def;
 });
-var require_pattern = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_pattern = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var code_1 = require_code2();
   var codegen_1 = require_codegen();
   var error2 = {
@@ -4519,10 +4496,10 @@ var require_pattern = __commonJS((exports2) => {
       cxt.fail$data((0, codegen_1._)`!${regExp}.test(${data})`);
     }
   };
-  exports2.default = def;
+  exports.default = def;
 });
-var require_limitProperties = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_limitProperties = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var codegen_1 = require_codegen();
   var error2 = {
     message({ keyword, schemaCode }) {
@@ -4543,10 +4520,10 @@ var require_limitProperties = __commonJS((exports2) => {
       cxt.fail$data((0, codegen_1._)`Object.keys(${data}).length ${op} ${schemaCode}`);
     }
   };
-  exports2.default = def;
+  exports.default = def;
 });
-var require_required = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_required = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var code_1 = require_code2();
   var codegen_1 = require_codegen();
   var util_1 = require_util();
@@ -4620,10 +4597,10 @@ var require_required = __commonJS((exports2) => {
       }
     }
   };
-  exports2.default = def;
+  exports.default = def;
 });
-var require_limitItems = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_limitItems = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var codegen_1 = require_codegen();
   var error2 = {
     message({ keyword, schemaCode }) {
@@ -4644,16 +4621,16 @@ var require_limitItems = __commonJS((exports2) => {
       cxt.fail$data((0, codegen_1._)`${data}.length ${op} ${schemaCode}`);
     }
   };
-  exports2.default = def;
+  exports.default = def;
 });
-var require_equal = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_equal = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var equal = require_fast_deep_equal();
   equal.code = 'require("ajv/dist/runtime/equal").default';
-  exports2.default = equal;
+  exports.default = equal;
 });
-var require_uniqueItems = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_uniqueItems = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var dataType_1 = require_dataType();
   var codegen_1 = require_codegen();
   var util_1 = require_util();
@@ -4712,10 +4689,10 @@ var require_uniqueItems = __commonJS((exports2) => {
       }
     }
   };
-  exports2.default = def;
+  exports.default = def;
 });
-var require_const = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_const = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var codegen_1 = require_codegen();
   var util_1 = require_util();
   var equal_1 = require_equal();
@@ -4736,10 +4713,10 @@ var require_const = __commonJS((exports2) => {
       }
     }
   };
-  exports2.default = def;
+  exports.default = def;
 });
-var require_enum = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_enum = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var codegen_1 = require_codegen();
   var util_1 = require_util();
   var equal_1 = require_equal();
@@ -4780,10 +4757,10 @@ var require_enum = __commonJS((exports2) => {
       }
     }
   };
-  exports2.default = def;
+  exports.default = def;
 });
-var require_validation = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_validation = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var limitNumber_1 = require_limitNumber();
   var multipleOf_1 = require_multipleOf();
   var limitLength_1 = require_limitLength();
@@ -4808,11 +4785,11 @@ var require_validation = __commonJS((exports2) => {
     const_1.default,
     enum_1.default
   ];
-  exports2.default = validation;
+  exports.default = validation;
 });
-var require_additionalItems = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.validateAdditionalItems = void 0;
+var require_additionalItems = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.validateAdditionalItems = void 0;
   var codegen_1 = require_codegen();
   var util_1 = require_util();
   var error2 = {
@@ -4855,12 +4832,12 @@ var require_additionalItems = __commonJS((exports2) => {
       });
     }
   }
-  exports2.validateAdditionalItems = validateAdditionalItems;
-  exports2.default = def;
+  exports.validateAdditionalItems = validateAdditionalItems;
+  exports.default = def;
 });
-var require_items = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.validateTuple = void 0;
+var require_items = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.validateTuple = void 0;
   var codegen_1 = require_codegen();
   var util_1 = require_util();
   var code_1 = require_code2();
@@ -4907,11 +4884,11 @@ var require_items = __commonJS((exports2) => {
       }
     }
   }
-  exports2.validateTuple = validateTuple;
-  exports2.default = def;
+  exports.validateTuple = validateTuple;
+  exports.default = def;
 });
-var require_prefixItems = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_prefixItems = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var items_1 = require_items();
   var def = {
     keyword: "prefixItems",
@@ -4920,10 +4897,10 @@ var require_prefixItems = __commonJS((exports2) => {
     before: "uniqueItems",
     code: (cxt) => (0, items_1.validateTuple)(cxt, "items")
   };
-  exports2.default = def;
+  exports.default = def;
 });
-var require_items2020 = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_items2020 = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var codegen_1 = require_codegen();
   var util_1 = require_util();
   var code_1 = require_code2();
@@ -4950,10 +4927,10 @@ var require_items2020 = __commonJS((exports2) => {
         cxt.ok((0, code_1.validateArray)(cxt));
     }
   };
-  exports2.default = def;
+  exports.default = def;
 });
-var require_contains = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_contains = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var codegen_1 = require_codegen();
   var util_1 = require_util();
   var error2 = {
@@ -5039,15 +5016,15 @@ var require_contains = __commonJS((exports2) => {
       }
     }
   };
-  exports2.default = def;
+  exports.default = def;
 });
-var require_dependencies = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.validateSchemaDeps = exports2.validatePropertyDeps = exports2.error = void 0;
+var require_dependencies = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.validateSchemaDeps = exports.validatePropertyDeps = exports.error = void 0;
   var codegen_1 = require_codegen();
   var util_1 = require_util();
   var code_1 = require_code2();
-  exports2.error = {
+  exports.error = {
     message: ({ params: { property, depsCount, deps } }) => {
       const property_ies = depsCount === 1 ? "property" : "properties";
       return (0, codegen_1.str)`must have ${property_ies} ${deps} when property ${property} is present`;
@@ -5061,7 +5038,7 @@ var require_dependencies = __commonJS((exports2) => {
     keyword: "dependencies",
     type: "object",
     schemaType: "object",
-    error: exports2.error,
+    error: exports.error,
     code(cxt) {
       const [propDeps, schDeps] = splitDependencies(cxt);
       validatePropertyDeps(cxt, propDeps);
@@ -5107,7 +5084,7 @@ var require_dependencies = __commonJS((exports2) => {
       }
     }
   }
-  exports2.validatePropertyDeps = validatePropertyDeps;
+  exports.validatePropertyDeps = validatePropertyDeps;
   function validateSchemaDeps(cxt, schemaDeps = cxt.schema) {
     const { gen, data, keyword, it } = cxt;
     const valid = gen.name("valid");
@@ -5121,11 +5098,11 @@ var require_dependencies = __commonJS((exports2) => {
       cxt.ok(valid);
     }
   }
-  exports2.validateSchemaDeps = validateSchemaDeps;
-  exports2.default = def;
+  exports.validateSchemaDeps = validateSchemaDeps;
+  exports.default = def;
 });
-var require_propertyNames = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_propertyNames = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var codegen_1 = require_codegen();
   var util_1 = require_util();
   var error2 = {
@@ -5160,10 +5137,10 @@ var require_propertyNames = __commonJS((exports2) => {
       cxt.ok(valid);
     }
   };
-  exports2.default = def;
+  exports.default = def;
 });
-var require_additionalProperties = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_additionalProperties = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var code_1 = require_code2();
   var codegen_1 = require_codegen();
   var names_1 = require_names();
@@ -5261,10 +5238,10 @@ var require_additionalProperties = __commonJS((exports2) => {
       }
     }
   };
-  exports2.default = def;
+  exports.default = def;
 });
-var require_properties = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_properties = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var validate_1 = require_validate();
   var code_1 = require_code2();
   var util_1 = require_util();
@@ -5314,10 +5291,10 @@ var require_properties = __commonJS((exports2) => {
       }
     }
   };
-  exports2.default = def;
+  exports.default = def;
 });
-var require_patternProperties = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_patternProperties = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var code_1 = require_code2();
   var codegen_1 = require_codegen();
   var util_1 = require_util();
@@ -5383,10 +5360,10 @@ var require_patternProperties = __commonJS((exports2) => {
       }
     }
   };
-  exports2.default = def;
+  exports.default = def;
 });
-var require_not = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_not = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var util_1 = require_util();
   var def = {
     keyword: "not",
@@ -5409,10 +5386,10 @@ var require_not = __commonJS((exports2) => {
     },
     error: { message: "must NOT be valid" }
   };
-  exports2.default = def;
+  exports.default = def;
 });
-var require_anyOf = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_anyOf = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var code_1 = require_code2();
   var def = {
     keyword: "anyOf",
@@ -5421,10 +5398,10 @@ var require_anyOf = __commonJS((exports2) => {
     code: code_1.validateUnion,
     error: { message: "must match a schema in anyOf" }
   };
-  exports2.default = def;
+  exports.default = def;
 });
-var require_oneOf = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_oneOf = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var codegen_1 = require_codegen();
   var util_1 = require_util();
   var error2 = {
@@ -5474,10 +5451,10 @@ var require_oneOf = __commonJS((exports2) => {
       }
     }
   };
-  exports2.default = def;
+  exports.default = def;
 });
-var require_allOf = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_allOf = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var util_1 = require_util();
   var def = {
     keyword: "allOf",
@@ -5496,10 +5473,10 @@ var require_allOf = __commonJS((exports2) => {
       });
     }
   };
-  exports2.default = def;
+  exports.default = def;
 });
-var require_if = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_if = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var codegen_1 = require_codegen();
   var util_1 = require_util();
   var error2 = {
@@ -5560,10 +5537,10 @@ var require_if = __commonJS((exports2) => {
     const schema = it.schema[keyword];
     return schema !== void 0 && !(0, util_1.alwaysValidSchema)(it, schema);
   }
-  exports2.default = def;
+  exports.default = def;
 });
-var require_thenElse = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_thenElse = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var util_1 = require_util();
   var def = {
     keyword: ["then", "else"],
@@ -5573,10 +5550,10 @@ var require_thenElse = __commonJS((exports2) => {
         (0, util_1.checkStrictMode)(it, `"${keyword}" without "if" is ignored`);
     }
   };
-  exports2.default = def;
+  exports.default = def;
 });
-var require_applicator = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_applicator = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var additionalItems_1 = require_additionalItems();
   var prefixItems_1 = require_prefixItems();
   var items_1 = require_items();
@@ -5614,10 +5591,10 @@ var require_applicator = __commonJS((exports2) => {
     applicator.push(contains_1.default);
     return applicator;
   }
-  exports2.default = getApplicator;
+  exports.default = getApplicator;
 });
-var require_format = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_format = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var codegen_1 = require_codegen();
   var error2 = {
     message: ({ schemaCode }) => (0, codegen_1.str)`must match format "${schemaCode}"`,
@@ -5699,18 +5676,18 @@ var require_format = __commonJS((exports2) => {
       }
     }
   };
-  exports2.default = def;
+  exports.default = def;
 });
-var require_format2 = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_format2 = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var format_1 = require_format();
   var format = [format_1.default];
-  exports2.default = format;
+  exports.default = format;
 });
-var require_metadata = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.contentVocabulary = exports2.metadataVocabulary = void 0;
-  exports2.metadataVocabulary = [
+var require_metadata = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.contentVocabulary = exports.metadataVocabulary = void 0;
+  exports.metadataVocabulary = [
     "title",
     "description",
     "default",
@@ -5719,14 +5696,14 @@ var require_metadata = __commonJS((exports2) => {
     "writeOnly",
     "examples"
   ];
-  exports2.contentVocabulary = [
+  exports.contentVocabulary = [
     "contentMediaType",
     "contentEncoding",
     "contentSchema"
   ];
 });
-var require_draft7 = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_draft7 = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var core_1 = require_core2();
   var validation_1 = require_validation();
   var applicator_1 = require_applicator();
@@ -5740,19 +5717,19 @@ var require_draft7 = __commonJS((exports2) => {
     metadata_1.metadataVocabulary,
     metadata_1.contentVocabulary
   ];
-  exports2.default = draft7Vocabularies;
+  exports.default = draft7Vocabularies;
 });
-var require_types = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.DiscrError = void 0;
+var require_types = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.DiscrError = void 0;
   var DiscrError;
   (function(DiscrError2) {
     DiscrError2["Tag"] = "tag";
     DiscrError2["Mapping"] = "mapping";
-  })(DiscrError || (exports2.DiscrError = DiscrError = {}));
+  })(DiscrError || (exports.DiscrError = DiscrError = {}));
 });
-var require_discriminator = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_discriminator = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var codegen_1 = require_codegen();
   var types_1 = require_types();
   var compile_1 = require_compile();
@@ -5849,10 +5826,10 @@ var require_discriminator = __commonJS((exports2) => {
       }
     }
   };
-  exports2.default = def;
+  exports.default = def;
 });
-var require_json_schema_draft_07 = __commonJS((exports2, module2) => {
-  module2.exports = {
+var require_json_schema_draft_07 = __commonJS((exports, module) => {
+  module.exports = {
     $schema: "http://json-schema.org/draft-07/schema#",
     $id: "http://json-schema.org/draft-07/schema#",
     title: "Core schema meta-schema",
@@ -6004,9 +5981,9 @@ var require_json_schema_draft_07 = __commonJS((exports2, module2) => {
     default: true
   };
 });
-var require_ajv = __commonJS((exports2, module2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.MissingRefError = exports2.ValidationError = exports2.CodeGen = exports2.Name = exports2.nil = exports2.stringify = exports2.str = exports2._ = exports2.KeywordCxt = exports2.Ajv = void 0;
+var require_ajv = __commonJS((exports, module) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.MissingRefError = exports.ValidationError = exports.CodeGen = exports.Name = exports.nil = exports.stringify = exports.str = exports._ = exports.KeywordCxt = exports.Ajv = void 0;
   var core_1 = require_core();
   var draft7_1 = require_draft7();
   var discriminator_1 = require_discriminator();
@@ -6032,50 +6009,50 @@ var require_ajv = __commonJS((exports2, module2) => {
       return this.opts.defaultMeta = super.defaultMeta() || (this.getSchema(META_SCHEMA_ID) ? META_SCHEMA_ID : void 0);
     }
   }
-  exports2.Ajv = Ajv;
-  module2.exports = exports2 = Ajv;
-  module2.exports.Ajv = Ajv;
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.default = Ajv;
+  exports.Ajv = Ajv;
+  module.exports = exports = Ajv;
+  module.exports.Ajv = Ajv;
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.default = Ajv;
   var validate_1 = require_validate();
-  Object.defineProperty(exports2, "KeywordCxt", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "KeywordCxt", { enumerable: true, get: function() {
     return validate_1.KeywordCxt;
   } });
   var codegen_1 = require_codegen();
-  Object.defineProperty(exports2, "_", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "_", { enumerable: true, get: function() {
     return codegen_1._;
   } });
-  Object.defineProperty(exports2, "str", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "str", { enumerable: true, get: function() {
     return codegen_1.str;
   } });
-  Object.defineProperty(exports2, "stringify", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "stringify", { enumerable: true, get: function() {
     return codegen_1.stringify;
   } });
-  Object.defineProperty(exports2, "nil", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "nil", { enumerable: true, get: function() {
     return codegen_1.nil;
   } });
-  Object.defineProperty(exports2, "Name", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "Name", { enumerable: true, get: function() {
     return codegen_1.Name;
   } });
-  Object.defineProperty(exports2, "CodeGen", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "CodeGen", { enumerable: true, get: function() {
     return codegen_1.CodeGen;
   } });
   var validation_error_1 = require_validation_error();
-  Object.defineProperty(exports2, "ValidationError", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "ValidationError", { enumerable: true, get: function() {
     return validation_error_1.default;
   } });
   var ref_error_1 = require_ref_error();
-  Object.defineProperty(exports2, "MissingRefError", { enumerable: true, get: function() {
+  Object.defineProperty(exports, "MissingRefError", { enumerable: true, get: function() {
     return ref_error_1.default;
   } });
 });
-var require_formats = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.formatNames = exports2.fastFormats = exports2.fullFormats = void 0;
+var require_formats = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.formatNames = exports.fastFormats = exports.fullFormats = void 0;
   function fmtDef(validate, compare) {
     return { validate, compare };
   }
-  exports2.fullFormats = {
+  exports.fullFormats = {
     date: fmtDef(date4, compareDate),
     time: fmtDef(getTime(true), compareTime),
     "date-time": fmtDef(getDateTime(true), compareDateTime),
@@ -6103,8 +6080,8 @@ var require_formats = __commonJS((exports2) => {
     password: true,
     binary: true
   };
-  exports2.fastFormats = {
-    ...exports2.fullFormats,
+  exports.fastFormats = {
+    ...exports.fullFormats,
     date: fmtDef(/^\d\d\d\d-[0-1]\d-[0-3]\d$/, compareDate),
     time: fmtDef(/^(?:[0-2]\d:[0-5]\d:[0-5]\d|23:59:60)(?:\.\d+)?(?:z|[+-]\d\d(?::?\d\d)?)$/i, compareTime),
     "date-time": fmtDef(/^\d\d\d\d-[0-1]\d-[0-3]\dt(?:[0-2]\d:[0-5]\d:[0-5]\d|23:59:60)(?:\.\d+)?(?:z|[+-]\d\d(?::?\d\d)?)$/i, compareDateTime),
@@ -6114,7 +6091,7 @@ var require_formats = __commonJS((exports2) => {
     "uri-reference": /^(?:(?:[a-z][a-z0-9+\-.]*:)?\/?\/)?(?:[^\\\s#][^\s#]*)?(?:#[^\\\s]*)?$/i,
     email: /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/i
   };
-  exports2.formatNames = Object.keys(exports2.fullFormats);
+  exports.formatNames = Object.keys(exports.fullFormats);
   function isLeapYear(year) {
     return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
   }
@@ -6244,9 +6221,9 @@ var require_formats = __commonJS((exports2) => {
     }
   }
 });
-var require_limit = __commonJS((exports2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.formatLimitDefinition = void 0;
+var require_limit = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.formatLimitDefinition = void 0;
   var ajv_1 = require_ajv();
   var codegen_1 = require_codegen();
   var ops = codegen_1.operators;
@@ -6260,7 +6237,7 @@ var require_limit = __commonJS((exports2) => {
     message: ({ keyword, schemaCode }) => (0, codegen_1.str)`should be ${KWDs[keyword].okStr} ${schemaCode}`,
     params: ({ keyword, schemaCode }) => (0, codegen_1._)`{comparison: ${KWDs[keyword].okStr}, limit: ${schemaCode}}`
   };
-  exports2.formatLimitDefinition = {
+  exports.formatLimitDefinition = {
     keyword: Object.keys(KWDs),
     type: "string",
     schemaType: "string",
@@ -6306,13 +6283,13 @@ var require_limit = __commonJS((exports2) => {
     dependencies: ["format"]
   };
   var formatLimitPlugin = (ajv) => {
-    ajv.addKeyword(exports2.formatLimitDefinition);
+    ajv.addKeyword(exports.formatLimitDefinition);
     return ajv;
   };
-  exports2.default = formatLimitPlugin;
+  exports.default = formatLimitPlugin;
 });
-var require_dist = __commonJS((exports2, module2) => {
-  Object.defineProperty(exports2, "__esModule", { value: true });
+var require_dist = __commonJS((exports, module) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
   var formats_1 = require_formats();
   var limit_1 = require_limit();
   var codegen_1 = require_codegen();
@@ -6344,14 +6321,14 @@ var require_dist = __commonJS((exports2, module2) => {
     for (const f of list)
       ajv.addFormat(f, fs22[f]);
   }
-  module2.exports = exports2 = formatsPlugin;
-  Object.defineProperty(exports2, "__esModule", { value: true });
-  exports2.default = formatsPlugin;
+  module.exports = exports = formatsPlugin;
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.default = formatsPlugin;
 });
 var DEFAULT_MAX_LISTENERS = 50;
 function createAbortController(maxListeners = DEFAULT_MAX_LISTENERS) {
   const controller = new AbortController();
-  (0, import_events.setMaxListeners)(maxListeners, controller.signal);
+  setMaxListeners(maxListeners, controller.signal);
   return controller;
 }
 var freeGlobal = typeof global == "object" && global && global.Object === Object && global;
@@ -6743,7 +6720,7 @@ function shouldShowDebugMessage(message, filter) {
   return shouldShowDebugCategories(categories, filter);
 }
 function getClaudeConfigHomeDir() {
-  return process.env.CLAUDE_CONFIG_DIR ?? (0, import_path2.join)((0, import_os.homedir)(), ".claude");
+  return process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), ".claude");
 }
 function isEnvTruthy(envVar) {
   if (!envVar)
@@ -6817,7 +6794,7 @@ var maxOutputTokensValidator = {
 function getInitialState() {
   let resolvedCwd = "";
   if (typeof process !== "undefined" && typeof process.cwd === "function") {
-    resolvedCwd = (0, import_fs.realpathSync)((0, import_process.cwd)());
+    resolvedCwd = realpathSync2(cwd());
   }
   return {
     originalCwd: resolvedCwd,
@@ -6857,7 +6834,7 @@ function getInitialState() {
     tokenCounter: null,
     codeEditToolDecisionCounter: null,
     activeTimeCounter: null,
-    sessionId: (0, import_crypto.randomUUID)(),
+    sessionId: randomUUID(),
     loggerProvider: null,
     eventLogger: null,
     meterProvider: null,
@@ -7015,8 +6992,8 @@ function getDebugWriter() {
     debugWriter = createBufferedWriter({
       writeFn: (content) => {
         const path4 = getDebugLogPath();
-        if (!getFsImplementation().existsSync((0, import_path3.dirname)(path4))) {
-          getFsImplementation().mkdirSync((0, import_path3.dirname)(path4));
+        if (!getFsImplementation().existsSync(dirname(path4))) {
+          getFsImplementation().mkdirSync(dirname(path4));
         }
         getFsImplementation().appendFileSync(path4, content);
         updateLatestDebugLogSymlink();
@@ -7049,7 +7026,7 @@ function logForDebugging(message, { level } = {
   getDebugWriter().write(output);
 }
 function getDebugLogPath() {
-  return process.env.CLAUDE_CODE_DEBUG_LOGS_DIR ?? (0, import_path3.join)(getClaudeConfigHomeDir(), "debug", `${getSessionId()}.txt`);
+  return process.env.CLAUDE_CODE_DEBUG_LOGS_DIR ?? join2(getClaudeConfigHomeDir(), "debug", `${getSessionId()}.txt`);
 }
 var updateLatestDebugLogSymlink = memoize_default(() => {
   if (process.argv[2] === "--ripgrep") {
@@ -7057,8 +7034,8 @@ var updateLatestDebugLogSymlink = memoize_default(() => {
   }
   try {
     const debugLogPath = getDebugLogPath();
-    const debugLogsDir = (0, import_path3.dirname)(debugLogPath);
-    const latestSymlinkPath = (0, import_path3.join)(debugLogsDir, "latest");
+    const debugLogsDir = dirname(debugLogPath);
+    const latestSymlinkPath = join2(debugLogsDir, "latest");
     if (!getFsImplementation().existsSync(debugLogsDir)) {
       getFsImplementation().mkdirSync(debugLogsDir);
     }
@@ -7092,7 +7069,7 @@ var NodeFsOperations = {
     return withSlowLogging2(`existsSync(${fsPath})`, () => fs.existsSync(fsPath));
   },
   async stat(fsPath) {
-    return (0, import_promises.stat)(fsPath);
+    return statPromise(fsPath);
   },
   statSync(fsPath) {
     return withSlowLogging2(`statSync(${fsPath})`, () => fs.statSync(fsPath));
@@ -7209,10 +7186,10 @@ function getOrCreateDebugFile() {
   if (!process.env.DEBUG_CLAUDE_AGENT_SDK) {
     return null;
   }
-  const debugDir = (0, import_path4.join)(getClaudeConfigHomeDir(), "debug");
-  debugFilePath = (0, import_path4.join)(debugDir, `sdk-${(0, import_crypto2.randomUUID)()}.txt`);
-  if (!(0, import_fs2.existsSync)(debugDir)) {
-    (0, import_fs2.mkdirSync)(debugDir, { recursive: true });
+  const debugDir = join3(getClaudeConfigHomeDir(), "debug");
+  debugFilePath = join3(debugDir, `sdk-${randomUUID2()}.txt`);
+  if (!existsSync2(debugDir)) {
+    mkdirSync2(debugDir, { recursive: true });
   }
   process.stderr.write(`SDK debug logs: ${debugFilePath}
 `);
@@ -7226,7 +7203,7 @@ function logForSdkDebugging(message) {
   const timestamp = (/* @__PURE__ */ new Date()).toISOString();
   const output = `${timestamp} ${message}
 `;
-  (0, import_fs2.appendFileSync)(path4, output);
+  appendFileSync2(path4, output);
 }
 function mergeSandboxIntoExtraArgs(extraArgs, sandbox) {
   const effectiveExtraArgs = { ...extraArgs };
@@ -7265,7 +7242,7 @@ var ProcessTransport = class {
   spawnLocalProcess(spawnOptions) {
     const { command, args, cwd: cwd2, env, signal } = spawnOptions;
     const stderrMode = env.DEBUG_CLAUDE_AGENT_SDK || this.options.stderr ? "pipe" : "ignore";
-    const childProcess = (0, import_child_process.spawn)(command, args, {
+    const childProcess = spawn(command, args, {
       cwd: cwd2,
       stdio: ["pipe", "pipe", stderrMode],
       signal,
@@ -7573,7 +7550,7 @@ var ProcessTransport = class {
     if (!this.processStdout) {
       throw new Error("ProcessTransport output stream not available");
     }
-    const rl = (0, import_readline.createInterface)({ input: this.processStdout });
+    const rl = createInterface({ input: this.processStdout });
     try {
       for await (const line of rl) {
         if (line.trim()) {
@@ -8182,7 +8159,7 @@ var Query = class {
     }
     const controlRequest = {
       type: "control_request",
-      request_id: (0, import_crypto3.randomUUID)(),
+      request_id: randomUUID3(),
       request: {
         subtype: "mcp_message",
         server_name: serverName,
@@ -16413,8 +16390,8 @@ var ServerResultSchema = union([
   CreateTaskResultSchema
 ]);
 var ALPHA_NUMERIC = new Set("ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvxyz0123456789");
-var import_ajv = __toESM2(require_ajv(), 1);
-var import_ajv_formats = __toESM2(require_dist(), 1);
+var import_ajv = __toESM(require_ajv(), 1);
+var import_ajv_formats = __toESM(require_dist(), 1);
 var McpZodTypeKind;
 (function(McpZodTypeKind2) {
   McpZodTypeKind2["Completable"] = "McpCompletable";
@@ -16435,9 +16412,9 @@ function query({
   }
   let pathToClaudeCodeExecutable = rest.pathToClaudeCodeExecutable;
   if (!pathToClaudeCodeExecutable) {
-    const filename = (0, import_url.fileURLToPath)(import_meta.url);
-    const dirname22 = (0, import_path.join)(filename, "..");
-    pathToClaudeCodeExecutable = (0, import_path.join)(dirname22, "cli.js");
+    const filename = fileURLToPath2(import.meta.url);
+    const dirname22 = join5(filename, "..");
+    pathToClaudeCodeExecutable = join5(dirname22, "cli.js");
   }
   process.env.CLAUDE_AGENT_SDK_VERSION = "0.1.77";
   const {
@@ -16568,8 +16545,8 @@ function query({
 }
 
 // dist/utils/logger.js
-var fs2 = __toESM(require("fs"), 1);
-var path = __toESM(require("path"), 1);
+import * as fs2 from "fs";
+import * as path from "path";
 var AGENTS = {
   QUEUE_PROCESSOR: "QUEUE_PROCESSOR",
   CHANGES_REVIEWER: "CHANGES_REVIEWER",
@@ -21958,8 +21935,8 @@ var zodToJsonSchema = (schema, options) => {
 };
 
 // dist/agents/changes-reviewer.js
-var import_node_fs = __toESM(require("node:fs"), 1);
-var import_node_path = __toESM(require("node:path"), 1);
+import fs3 from "node:fs";
+import path2 from "node:path";
 var ReviewEntrySchema = external_exports.object({
   id: external_exports.string(),
   subject: external_exports.string(),
@@ -21980,16 +21957,16 @@ var KNOWLEDGE_DIR = ".claude/knowledge";
 var PENDING_DIR = `${KNOWLEDGE_DIR}/pending-review`;
 var LAST_ANALYSIS_FILE = `${KNOWLEDGE_DIR}/.last-analysis`;
 function writeLastAnalysis(state) {
-  import_node_fs.default.writeFileSync(import_node_path.default.join(process.cwd(), LAST_ANALYSIS_FILE), JSON.stringify(state, null, 2));
+  fs3.writeFileSync(path2.join(process.cwd(), LAST_ANALYSIS_FILE), JSON.stringify(state, null, 2));
 }
 function writePendingReview(review) {
   const filename = `${review.id}.json`;
-  const filepath = import_node_path.default.join(process.cwd(), PENDING_DIR, filename);
-  const dir = import_node_path.default.dirname(filepath);
-  if (!import_node_fs.default.existsSync(dir)) {
-    import_node_fs.default.mkdirSync(dir, { recursive: true });
+  const filepath = path2.join(process.cwd(), PENDING_DIR, filename);
+  const dir = path2.dirname(filepath);
+  if (!fs3.existsSync(dir)) {
+    fs3.mkdirSync(dir, { recursive: true });
   }
-  import_node_fs.default.writeFileSync(filepath, JSON.stringify(review, null, 2));
+  fs3.writeFileSync(filepath, JSON.stringify(review, null, 2));
 }
 
 // dist/agents/inquisitor.js
@@ -22127,14 +22104,14 @@ function parseKnowledgeEntries(category, filename, content) {
 }
 
 // hooks/run-analysis.js
-var import_node_fs2 = __toESM(require("node:fs"), 1);
-var import_node_path2 = __toESM(require("node:path"), 1);
-var import_node_child_process = require("node:child_process");
+import fs4 from "node:fs";
+import path3 from "node:path";
+import { execSync } from "node:child_process";
 var AGENT = AGENTS.CHANGES_REVIEWER;
 var KNOWLEDGE_DIR2 = ".claude/knowledge";
 var PENDING_DIR2 = `${KNOWLEDGE_DIR2}/pending-review`;
 var CATEGORIES = ["architecture", "patterns", "dependencies", "workflows", "gotchas"];
-var LOCK_FILE = import_node_path2.default.join(KNOWLEDGE_DIR2, ".analysis-lock");
+var LOCK_FILE = path3.join(KNOWLEDGE_DIR2, ".analysis-lock");
 var MAX_CONCURRENT_INQUISITORS = 5;
 function processExists(pid) {
   try {
@@ -22145,10 +22122,10 @@ function processExists(pid) {
   }
 }
 function acquireLock() {
-  const lockPath = import_node_path2.default.join(process.cwd(), LOCK_FILE);
-  if (import_node_fs2.default.existsSync(lockPath)) {
+  const lockPath = path3.join(process.cwd(), LOCK_FILE);
+  if (fs4.existsSync(lockPath)) {
     try {
-      const lock = JSON.parse(import_node_fs2.default.readFileSync(lockPath, "utf-8"));
+      const lock = JSON.parse(fs4.readFileSync(lockPath, "utf-8"));
       if (processExists(lock.pid)) {
         logInfo(AGENT, `Analysis already running (PID ${lock.pid}), skipping`);
         return false;
@@ -22157,30 +22134,30 @@ function acquireLock() {
     } catch {
     }
   }
-  import_node_fs2.default.writeFileSync(lockPath, JSON.stringify({
+  fs4.writeFileSync(lockPath, JSON.stringify({
     pid: process.pid,
     started_at: (/* @__PURE__ */ new Date()).toISOString()
   }, null, 2));
   return true;
 }
 function releaseLock() {
-  const lockPath = import_node_path2.default.join(process.cwd(), LOCK_FILE);
-  if (import_node_fs2.default.existsSync(lockPath)) {
-    import_node_fs2.default.unlinkSync(lockPath);
+  const lockPath = path3.join(process.cwd(), LOCK_FILE);
+  if (fs4.existsSync(lockPath)) {
+    fs4.unlinkSync(lockPath);
   }
 }
 function pendingReviewExists(entryId) {
-  const reviewPath = import_node_path2.default.join(process.cwd(), PENDING_DIR2, `${entryId}.json`);
-  return import_node_fs2.default.existsSync(reviewPath);
+  const reviewPath = path3.join(process.cwd(), PENDING_DIR2, `${entryId}.json`);
+  return fs4.existsSync(reviewPath);
 }
 function getPendingReviews() {
   const reviews = [];
-  const dir = import_node_path2.default.join(process.cwd(), PENDING_DIR2);
-  if (!import_node_fs2.default.existsSync(dir)) return reviews;
-  const files = import_node_fs2.default.readdirSync(dir).filter((f) => f.endsWith(".json"));
+  const dir = path3.join(process.cwd(), PENDING_DIR2);
+  if (!fs4.existsSync(dir)) return reviews;
+  const files = fs4.readdirSync(dir).filter((f) => f.endsWith(".json"));
   for (const file of files) {
     try {
-      const content = import_node_fs2.default.readFileSync(import_node_path2.default.join(dir, file), "utf-8");
+      const content = fs4.readFileSync(path3.join(dir, file), "utf-8");
       const review = JSON.parse(content);
       if (!review.answer) {
         reviews.push({ ...review, _filename: file });
@@ -22192,32 +22169,32 @@ function getPendingReviews() {
   return reviews;
 }
 function deletePendingReview(filename) {
-  const filepath = import_node_path2.default.join(process.cwd(), PENDING_DIR2, filename);
-  if (import_node_fs2.default.existsSync(filepath)) {
-    import_node_fs2.default.unlinkSync(filepath);
+  const filepath = path3.join(process.cwd(), PENDING_DIR2, filename);
+  if (fs4.existsSync(filepath)) {
+    fs4.unlinkSync(filepath);
     logInfo(AGENT, `Deleted stale review: ${filename}`);
   }
 }
 function getCurrentHead() {
   try {
-    return (0, import_node_child_process.execSync)("git rev-parse HEAD", { encoding: "utf-8" }).trim();
+    return execSync("git rev-parse HEAD", { encoding: "utf-8" }).trim();
   } catch (error2) {
     return null;
   }
 }
 function getAllKnowledgeEntries() {
   const entries = [];
-  const baseDir = import_node_path2.default.join(process.cwd(), KNOWLEDGE_DIR2);
+  const baseDir = path3.join(process.cwd(), KNOWLEDGE_DIR2);
   for (const category of CATEGORIES) {
-    const categoryDir = import_node_path2.default.join(baseDir, category);
-    if (!import_node_fs2.default.existsSync(categoryDir)) {
+    const categoryDir = path3.join(baseDir, category);
+    if (!fs4.existsSync(categoryDir)) {
       continue;
     }
-    const files = import_node_fs2.default.readdirSync(categoryDir).filter((f) => f.endsWith(".md"));
+    const files = fs4.readdirSync(categoryDir).filter((f) => f.endsWith(".md"));
     for (const file of files) {
-      const filepath = import_node_path2.default.join(categoryDir, file);
+      const filepath = path3.join(categoryDir, file);
       try {
-        const content = import_node_fs2.default.readFileSync(filepath, "utf-8");
+        const content = fs4.readFileSync(filepath, "utf-8");
         const parsed = parseKnowledgeEntries(category, file, content);
         entries.push(...parsed);
       } catch (error2) {

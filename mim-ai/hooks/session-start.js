@@ -36,8 +36,8 @@ function runMimInit() {
 function spawnBackgroundAnalysis() {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
-  // Use bundled version - it includes all npm dependencies
-  const analysisScript = path.join(__dirname, 'run-analysis.bundled.cjs');
+  // Use bundled ESM version - it includes all npm dependencies and preserves import.meta.url
+  const analysisScript = path.join(__dirname, 'run-analysis.bundled.mjs');
 
   // Spawn detached so it doesn't block the session
   const child = spawn('node', [analysisScript], {
