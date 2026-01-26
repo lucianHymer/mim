@@ -29,7 +29,7 @@ When you think/say: "I learned that", "turns out", "actually it's", "I discovere
 
 ❌ Skip: Current bug fixes, temporary debug output, generic programming concepts
 
-**ACTION: Capture project discoveries immediately - every insight feeds the Wellspring of Knowledge.**
+**ACTION: Capture project discoveries immediately - every insight feeds the depths.**
 
 ## ⚠️ Remember Knowledge First
 

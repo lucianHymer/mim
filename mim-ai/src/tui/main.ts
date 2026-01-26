@@ -128,6 +128,8 @@ interface GameState {
   agentProcessing: boolean;
   /** Whether agent is done */
   agentDone: boolean;
+  /** Loaded answered reviews for multi-turn processing */
+  answeredReviews: AnsweredReview[];
 
   /** Whether in text input mode for "Other" answer */
   textInputMode: boolean;
@@ -154,6 +156,24 @@ interface GameState {
 
   /** Scroll offset for wellspring chat panel */
   wellspringScrollOffset: number;
+
+  /** Wellspring input mode: INSERT for typing, SCROLL for navigation */
+  wellspringMode: 'INSERT' | 'SCROLL';
+  /** Current input buffer for wellspring text entry */
+  wellspringInputBuffer: string;
+  /** Cursor position within wellspringInputBuffer */
+  wellspringCursorPosition: number;
+
+  /** Currently executing tool name, or null if none */
+  currentTool: string | null;
+  /** Recent tools that have been executed */
+  recentTools: string[];
+  /** Count of tools executed since last message */
+  toolCountSinceLastMessage: number;
+  /** Whether to show the tool indicator */
+  showToolIndicator: boolean;
+  /** Timestamp of last tool execution */
+  lastToolTime: number;
 }
 
 /**
@@ -270,6 +290,9 @@ const COLORS = {
   red: '\x1b[31m',
   blue: '\x1b[34m',
   brightWhite: '\x1b[97m',
+  white: '\x1b[37m',
+  black: '\x1b[30m',
+  bgGreen: '\x1b[42m',
 };
 
 // Filler row cache for grass/trees above and below the scene
@@ -588,6 +611,7 @@ class MimGame {
       wellspringSessionId: null,
       agentProcessing: false,
       agentDone: false,
+      answeredReviews: [],
       textInputMode: false,
       textInputValue: '',
       otherInputActive: false,
@@ -599,6 +623,14 @@ class MimGame {
       showQuestionModal: true,
       questionScrollOffset: 0,
       wellspringScrollOffset: 0,
+      wellspringMode: 'INSERT',
+      wellspringInputBuffer: '',
+      wellspringCursorPosition: 0,
+      currentTool: null,
+      recentTools: [],
+      toolCountSinceLastMessage: 0,
+      showToolIndicator: false,
+      lastToolTime: 0,
     };
     this.tracker = {
       lastTileFrame: -1,
@@ -1308,15 +1340,130 @@ class MimGame {
   }
 
   /**
-   * Run Agent 3 (Wellspring) to apply user decisions
+   * Shared canUseTool callback for Wellspring agent queries.
+   * Denies AskUserQuestion (agent should ask in message instead),
+   * tracks tool usage for UI indicator.
+   */
+  private wellspringCanUseTool = async (tool: string, input: Record<string, unknown>): Promise<{ behavior: 'allow'; updatedInput: Record<string, unknown> } | { behavior: 'deny'; message: string }> => {
+    const AGENT = AGENTS.WELLSPRING;
+    if (tool === 'AskUserQuestion') {
+      return { behavior: 'deny', message: 'Just ask in your message instead' };
+    }
+    // Log tool usage
+    logInfo(AGENT, `Using tool: ${tool}`);
+
+    // Update tool indicator state
+    this.state.currentTool = tool;
+    this.state.lastToolTime = Date.now();
+    this.state.toolCountSinceLastMessage++;
+    this.state.showToolIndicator = true;
+
+    // Add to recentTools (deduped, max 2)
+    if (this.state.recentTools.length === 0 || this.state.recentTools[this.state.recentTools.length - 1] !== tool) {
+      this.state.recentTools.push(tool);
+      if (this.state.recentTools.length > 2) {
+        this.state.recentTools.shift();
+      }
+    }
+
+    this.draw();
+    return { behavior: 'allow', updatedInput: input };
+  };
+
+  /**
+   * Process events from a Wellspring agent session.
+   * Handles init, assistant, and result events.
+   * Returns when a result event is received (success or error).
+   * On success with done=false, sets agentProcessing=false so user can respond.
+   * On success with done=true, sets agentDone=true and cleans up review files.
+   */
+  private async processWellspringEvents(
+    session: AsyncIterable<{ type: string; subtype?: string; session_id?: string; message?: { content?: Array<{ type: string; text?: string }> }; structured_output?: unknown; errors?: string[] }>
+  ): Promise<void> {
+    const AGENT = AGENTS.WELLSPRING;
+
+    for await (const event of session) {
+      if (event.type === 'system' && event.subtype === 'init') {
+        this.state.wellspringSessionId = event.session_id ?? null;
+        logInfo(AGENT, `Session started: ${event.session_id}`);
+      }
+
+      if (event.type === 'assistant') {
+        // Stream assistant text to chat
+        // The content is nested inside event.message.content
+        const message = event.message;
+        if (message && message.content) {
+          for (const block of message.content) {
+            if (block.type === 'text' && block.text) {
+              this.addMessage('mimir', block.text);
+            }
+          }
+        }
+      }
+
+      if (event.type === 'result') {
+        if (event.subtype === 'success') {
+          const output = event.structured_output as { message?: string; done?: boolean } | undefined;
+          if (output) {
+            if (output.message) {
+              // Clear tool indicator on actual message
+              this.state.showToolIndicator = false;
+              this.state.recentTools = [];
+              this.state.toolCountSinceLastMessage = 0;
+              this.state.currentTool = null;
+
+              // Sound and animation for actual messages
+              playSfx('quickNotice');
+              this.mimSprite?.hop(1);
+
+              this.addMessage('mimir', output.message);
+            }
+            if (output.done) {
+              logInfo(AGENT, 'Agent signaled done');
+              this.state.agentDone = true;
+
+              // Clean up processed review files
+              for (const review of this.state.answeredReviews) {
+                try {
+                  deleteReviewFile(review);
+                  logInfo(AGENT, `Deleted review file: ${review.id}`);
+                } catch (err) {
+                  logWarn(AGENT, `Failed to delete review file ${review.id}: ${err}`);
+                }
+              }
+
+              this.addMessage('mimir', 'It is done. The waters are still. Press ESC to depart.');
+            } else {
+              // done=false: Agent is waiting for user input
+              logInfo(AGENT, 'Agent waiting for user input');
+              this.state.agentProcessing = false;
+              this.draw();
+            }
+          }
+        } else {
+          // Error subtypes: error_during_execution, error_max_turns, error_max_budget_usd, error_max_structured_output_retries
+          const errors = event.errors || [];
+          logError(AGENT, `Agent error: ${event.subtype} - ${errors.join(', ')}`);
+          this.addMessage('mimir', 'The waters grow turbulent... Something has gone wrong.');
+        }
+        // Result event received, stop processing
+        return;
+      }
+    }
+  }
+
+  /**
+   * Run Agent 3 (Wellspring) to apply user decisions.
+   * Starts the initial query with all reviews; if the agent returns done=false,
+   * it will wait for user input via sendWellspringMessage().
    */
   private async runWellspringAgent(): Promise<void> {
     const AGENT = AGENTS.WELLSPRING;
     logInfo(AGENT, 'Starting Wellspring agent');
 
-    // Load answered reviews
-    const reviews = loadAnsweredReviews();
-    if (reviews.length === 0) {
+    // Load answered reviews and store for multi-turn processing
+    this.state.answeredReviews = loadAnsweredReviews();
+    if (this.state.answeredReviews.length === 0) {
       logInfo(AGENT, 'No answered reviews to process');
       this.addMessage('mimir', 'The waters are still. No decisions await.');
       this.state.agentDone = true;
@@ -1324,12 +1471,12 @@ class MimGame {
       return;
     }
 
-    logInfo(AGENT, `Processing ${reviews.length} answered reviews`);
+    logInfo(AGENT, `Processing ${this.state.answeredReviews.length} answered reviews`);
     this.state.agentProcessing = true;
     this.draw();
 
     // Build prompt with all answered reviews
-    const reviewsText = reviews.map(r =>
+    const reviewsText = this.state.answeredReviews.map(r =>
       `Review ${r.id}:
       Question: ${r.question}
       Answer: ${r.answer}
@@ -1345,15 +1492,7 @@ class MimGame {
         options: {
           model: 'opus',
           systemPrompt: WELLSPRING_SYSTEM_PROMPT,
-          canUseTool: async (tool, input) => {
-            if (tool === 'AskUserQuestion') {
-              return { behavior: 'deny', message: 'Apply the user decision directly' };
-            }
-            // Log tool usage
-            logInfo(AGENT, `Using tool: ${tool}`);
-            this.addMessage('mimir', `[Using ${tool}...]`);
-            return { behavior: 'allow', updatedInput: input };
-          },
+          canUseTool: this.wellspringCanUseTool,
           outputFormat: {
             type: 'json_schema',
             schema: getWellspringOutputJsonSchema()
@@ -1361,67 +1500,76 @@ class MimGame {
         }
       });
 
-      for await (const event of session) {
-        if (event.type === 'system' && event.subtype === 'init') {
-          this.state.wellspringSessionId = event.session_id;
-          logInfo(AGENT, `Session started: ${event.session_id}`);
-        }
-
-        if (event.type === 'assistant') {
-          // Stream assistant text to chat
-          // The content is nested inside event.message.content
-          const message = event.message;
-          if (message && message.content) {
-            for (const block of message.content) {
-              if (block.type === 'text' && block.text) {
-                this.addMessage('mimir', block.text);
-              }
-            }
-          }
-        }
-
-        if (event.type === 'result') {
-          if (event.subtype === 'success') {
-            const output = event.structured_output as { message?: string; done?: boolean } | undefined;
-            if (output) {
-              if (output.message) {
-                this.addMessage('mimir', output.message);
-              }
-              if (output.done) {
-                logInfo(AGENT, 'Agent signaled done');
-                this.state.agentDone = true;
-
-                // Clean up processed review files
-                for (const review of reviews) {
-                  try {
-                    deleteReviewFile(review);
-                    logInfo(AGENT, `Deleted review file: ${review.id}`);
-                  } catch (err) {
-                    logWarn(AGENT, `Failed to delete review file ${review.id}: ${err}`);
-                  }
-                }
-
-                this.addMessage('mimir', 'It is done. The Wellspring rests. Press ESC to depart.');
-              }
-            }
-          } else {
-            // Error subtypes: error_during_execution, error_max_turns, error_max_budget_usd, error_max_structured_output_retries
-            const errors = event.errors || [];
-            logError(AGENT, `Agent error: ${event.subtype} - ${errors.join(', ')}`);
-            this.addMessage('mimir', 'The waters grow turbulent... Something has gone wrong.');
-          }
-        }
-      }
+      await this.processWellspringEvents(session);
     } catch (err) {
       const error = err as Error;
       logError(AGENT, `Wellspring agent failed: ${error.message}`);
       this.addMessage('mimir', `Error: ${error.message}`);
     } finally {
-      this.state.agentProcessing = false;
+      // Only set agentProcessing=false if agent is done (otherwise already set in processWellspringEvents)
+      if (this.state.agentDone) {
+        this.state.agentProcessing = false;
+      }
       this.draw();
     }
 
-    logInfo(AGENT, 'Wellspring agent completed');
+    logInfo(AGENT, 'Wellspring agent initial turn completed');
+  }
+
+  /**
+   * Send a user message to the Wellspring agent, resuming the existing session.
+   * Called when the user submits text in INSERT mode.
+   */
+  async sendWellspringMessage(text: string): Promise<void> {
+    const AGENT = AGENTS.WELLSPRING;
+
+    if (!this.state.wellspringSessionId) {
+      logWarn(AGENT, 'Cannot send message: no active session');
+      this.addMessage('mimir', 'The waters are silent... No connection to the depths.');
+      return;
+    }
+
+    if (this.state.agentDone) {
+      logWarn(AGENT, 'Cannot send message: agent is done');
+      return;
+    }
+
+    // Show user message in chat
+    this.addMessage('user', text);
+
+    logInfo(AGENT, `Sending user message to session ${this.state.wellspringSessionId}`);
+    this.state.agentProcessing = true;
+    this.draw();
+
+    try {
+      const session = query({
+        prompt: text,
+        options: {
+          model: 'opus',
+          systemPrompt: WELLSPRING_SYSTEM_PROMPT,
+          canUseTool: this.wellspringCanUseTool,
+          outputFormat: {
+            type: 'json_schema',
+            schema: getWellspringOutputJsonSchema()
+          },
+          resume: this.state.wellspringSessionId
+        }
+      });
+
+      await this.processWellspringEvents(session);
+    } catch (err) {
+      const error = err as Error;
+      logError(AGENT, `Wellspring message failed: ${error.message}`);
+      this.addMessage('mimir', `Error: ${error.message}`);
+    } finally {
+      // Only set agentProcessing=false if agent is done (otherwise already set in processWellspringEvents)
+      if (this.state.agentDone) {
+        this.state.agentProcessing = false;
+      }
+      this.draw();
+    }
+
+    logInfo(AGENT, 'Wellspring message turn completed');
   }
 
   // ============================================================================
@@ -1717,75 +1865,119 @@ class MimGame {
 
   private handleWellspringInput(key: string): void {
     const layout = getLayout();
-    // Calculate visible chat height (minus header and footer)
-    const headerLines = 7; // Title + narrator + status
-    const footerLines = 2; // Instructions
+    const headerLines = 7;
+    const footerLines = 2;
     const visibleHeight = layout.chatArea.height - headerLines - footerLines;
 
-    switch (key) {
-      case 'ESCAPE':
-        // Only allow exit when agent is done
-        if (this.state.agentDone) {
-          if (this.callbacks.onComplete) {
-            this.callbacks.onComplete();
-          }
-          this.stop();
+    // Handle INSERT mode
+    if (this.state.wellspringMode === 'INSERT') {
+      if (key === 'ESCAPE') {
+        // Switch to SCROLL mode
+        this.state.wellspringMode = 'SCROLL';
+        this.draw();
+        return;
+      }
+
+      if (key === 'ENTER') {
+        // Send message if buffer has content and not processing
+        if (this.state.wellspringInputBuffer.trim().length > 0 && !this.state.agentProcessing) {
+          const message = this.state.wellspringInputBuffer.trim();
+          this.state.wellspringInputBuffer = '';
+          this.state.wellspringCursorPosition = 0;
+          this.sendWellspringMessage(message);
         }
-        break;
+        return;
+      }
 
-      case 'j':
-      case 'DOWN':
-        // Scroll down
-        this.state.wellspringScrollOffset++;
-        this.draw();
-        break;
+      if (key === 'BACKSPACE' || key === 'DELETE') {
+        if (this.state.wellspringInputBuffer.length > 0) {
+          this.state.wellspringInputBuffer = this.state.wellspringInputBuffer.slice(0, -1);
+          this.state.wellspringCursorPosition = Math.max(0, this.state.wellspringCursorPosition - 1);
+          this.draw();
+        }
+        return;
+      }
 
-      case 'k':
-      case 'UP':
-        // Scroll up
-        this.state.wellspringScrollOffset = Math.max(0, this.state.wellspringScrollOffset - 1);
-        this.draw();
-        break;
+      // Add printable character
+      if (key.length === 1 && key.charCodeAt(0) >= 32) {
+        if (this.state.wellspringInputBuffer.length < 500) {
+          this.state.wellspringInputBuffer += key;
+          this.state.wellspringCursorPosition++;
+          this.draw();
+        }
+        return;
+      }
 
-      case 'g':
-        // Scroll to top
-        this.state.wellspringScrollOffset = 0;
-        this.draw();
-        break;
+      return;
+    }
 
-      case 'G':
-        // Scroll to bottom (will be clamped in draw)
-        this.state.wellspringScrollOffset = 999999;
-        this.draw();
-        break;
+    // Handle SCROLL mode
+    if (this.state.wellspringMode === 'SCROLL') {
+      switch (key) {
+        case 'i':
+          // Switch to INSERT mode (only if agent not done)
+          if (!this.state.agentDone) {
+            this.state.wellspringMode = 'INSERT';
+            this.draw();
+          }
+          return;
 
-      case 'b':
-      case 'CTRL_B':
-        // Page up
-        this.state.wellspringScrollOffset = Math.max(0, this.state.wellspringScrollOffset - visibleHeight);
-        this.draw();
-        break;
+        case 'ESCAPE':
+          // Exit only when agent is done
+          if (this.state.agentDone) {
+            if (this.callbacks.onComplete) {
+              this.callbacks.onComplete();
+            }
+            this.stop();
+          }
+          return;
 
-      case 'f':
-      case 'CTRL_F':
-        // Page down
-        this.state.wellspringScrollOffset += visibleHeight;
-        this.draw();
-        break;
+        case 'j':
+        case 'DOWN':
+          this.state.wellspringScrollOffset++;
+          this.draw();
+          return;
 
-      case 'u':
-      case 'CTRL_U':
-        // Half page up
-        this.state.wellspringScrollOffset = Math.max(0, this.state.wellspringScrollOffset - Math.floor(visibleHeight / 2));
-        this.draw();
-        break;
+        case 'k':
+        case 'UP':
+          this.state.wellspringScrollOffset = Math.max(0, this.state.wellspringScrollOffset - 1);
+          this.draw();
+          return;
 
-      case 'd':
-      case 'CTRL_D':
-        // Half page down
-        this.state.wellspringScrollOffset += Math.floor(visibleHeight / 2);
-        this.draw();
-        break;
+        case 'g':
+          this.state.wellspringScrollOffset = 0;
+          this.draw();
+          return;
+
+        case 'G':
+          this.state.wellspringScrollOffset = 999999;
+          this.draw();
+          return;
+
+        case 'b':
+        case 'CTRL_B':
+          this.state.wellspringScrollOffset = Math.max(0, this.state.wellspringScrollOffset - visibleHeight);
+          this.draw();
+          return;
+
+        case 'f':
+        case 'CTRL_F':
+          this.state.wellspringScrollOffset += visibleHeight;
+          this.draw();
+          return;
+
+        case 'u':
+        case 'CTRL_U':
+          this.state.wellspringScrollOffset = Math.max(0, this.state.wellspringScrollOffset - Math.floor(visibleHeight / 2));
+          this.draw();
+          return;
+
+        case 'd':
+        case 'CTRL_D':
+          this.state.wellspringScrollOffset += Math.floor(visibleHeight / 2);
+          this.draw();
+          return;
+      }
     }
   }
 
@@ -3022,6 +3214,24 @@ class MimGame {
       renderedLines.push({ text: `Processing${dots}`, color: COLORS.dim });
     }
 
+    // Add tool indicator if active
+    if (this.state.showToolIndicator && this.state.recentTools.length > 0) {
+      // Pulsing dot based on animation frame (use Date.now() for timing)
+      const pulse = Math.floor(Date.now() / 500) % 2 === 0 ? '·' : ' ';
+
+      // Format: · Read → Grep (3 tools) ·
+      const toolsText = this.state.recentTools.join(' → ');
+      const countText = this.state.toolCountSinceLastMessage === 1
+        ? '(1 tool)'
+        : `(${this.state.toolCountSinceLastMessage} tools)`;
+
+      renderedLines.push({ text: '', color: 'gray' }); // blank line
+      renderedLines.push({
+        text: `${pulse} ${toolsText} ${countText} ${pulse}`,
+        color: 'gray'
+      });
+    }
+
     return renderedLines;
   }
 
@@ -3063,7 +3273,9 @@ class MimGame {
 
     // Calculate visible area for messages (between header and footer)
     const headerEndY = y;
-    const footerLines = 2; // Status bar + instructions
+    // Footer: input line (in INSERT mode when not done) + hints line
+    const showInputLine = this.state.wellspringMode === 'INSERT' && !this.state.agentDone;
+    const footerLines = showInputLine ? 3 : 2; // Input line + status bar + hints (or just status + hints)
     const instructionY = layout.chatArea.y + layout.chatArea.height - footerLines;
     const visibleHeight = instructionY - headerEndY;
 
@@ -3087,15 +3299,48 @@ class MimGame {
       }
     }
 
-    // Status bar with scroll hints (above instructions)
-    const statusY = instructionY;
-    term.moveTo(x, statusY);
+    // Draw input line when in INSERT mode and not done
+    let currentY = instructionY;
+    if (showInputLine) {
+      term.moveTo(x, currentY);
+      // Mode indicator + input buffer with cursor
+      const modeIndicator = `${COLORS.bgGreen}${COLORS.black} INSERT ${COLORS.reset} `;
+      const cursorChar = '\u2588'; // Block cursor
+      const inputDisplay = this.state.wellspringInputBuffer + cursorChar;
+      const maxInputWidth = width - 10; // Leave room for mode indicator
+      const truncatedInput = inputDisplay.length > maxInputWidth
+        ? inputDisplay.substring(inputDisplay.length - maxInputWidth)
+        : inputDisplay;
+      process.stdout.write(`${modeIndicator}${COLORS.white}${truncatedInput}${COLORS.reset}`);
+      currentY++;
+    }
+
+    // Status bar with mode-appropriate hints
+    term.moveTo(x, currentY);
     const canScrollUp = this.state.wellspringScrollOffset > 0;
     const canScrollDown = this.state.wellspringScrollOffset < maxScroll;
-    const scrollHint = canScrollUp || canScrollDown
-      ? `${COLORS.dim}[j/k] scroll  [g/G] top/bottom  [u/d] half-page${COLORS.reset}`
-      : '';
-    process.stdout.write(scrollHint);
+
+    if (this.state.agentProcessing) {
+      // Show thinking indicator while agent is processing
+      const dots = '.'.repeat((this.state.blinkCycle % 4) + 1);
+      process.stdout.write(`${COLORS.cyan}Mimir is thinking${dots}${COLORS.reset}`);
+    } else if (this.state.wellspringMode === 'INSERT' && !this.state.agentDone) {
+      // INSERT mode hints
+      process.stdout.write(`${COLORS.dim}[Enter] Send  [ESC] Scroll mode${COLORS.reset}`);
+    } else if (this.state.wellspringMode === 'SCROLL' && !this.state.agentDone) {
+      // SCROLL mode hints
+      const scrollHints = canScrollUp || canScrollDown
+        ? `${COLORS.dim}[i] Type  [j/k] scroll  [g/G] top/bottom${COLORS.reset}`
+        : `${COLORS.dim}[i] Type${COLORS.reset}`;
+      process.stdout.write(scrollHints);
+    } else if (this.state.agentDone) {
+      // Done state - just show scroll hints if scrollable
+      const scrollHint = canScrollUp || canScrollDown
+        ? `${COLORS.dim}[j/k] scroll  [g/G] top/bottom${COLORS.reset}`
+        : '';
+      process.stdout.write(scrollHint);
+    }
+    currentY++;
 
     // Instructions at bottom (with integrated audio controls)
     const bottomY = layout.chatArea.y + layout.chatArea.height - 1;
@@ -3104,7 +3349,7 @@ class MimGame {
     if (this.state.agentDone) {
       process.stdout.write(`${COLORS.green}[ESC] Depart the Wellspring${COLORS.reset}  ${COLORS.dim}·${COLORS.reset}  ${audioStatus}`);
     } else {
-      process.stdout.write(`${COLORS.dim}Watching the Wellspring work...  [Ctrl+C] Quit  ·${COLORS.reset}  ${audioStatus}`);
+      process.stdout.write(`${COLORS.dim}[Ctrl+C] Quit  ·${COLORS.reset}  ${audioStatus}`);
     }
   }
 

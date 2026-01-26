@@ -99,9 +99,30 @@ declare class MimGame {
     private updateTextInputLine;
     private setupWellspringScene;
     /**
-     * Run Agent 3 (Wellspring) to apply user decisions
+     * Shared canUseTool callback for Wellspring agent queries.
+     * Denies AskUserQuestion (agent should ask in message instead),
+     * tracks tool usage for UI indicator.
+     */
+    private wellspringCanUseTool;
+    /**
+     * Process events from a Wellspring agent session.
+     * Handles init, assistant, and result events.
+     * Returns when a result event is received (success or error).
+     * On success with done=false, sets agentProcessing=false so user can respond.
+     * On success with done=true, sets agentDone=true and cleans up review files.
+     */
+    private processWellspringEvents;
+    /**
+     * Run Agent 3 (Wellspring) to apply user decisions.
+     * Starts the initial query with all reviews; if the agent returns done=false,
+     * it will wait for user input via sendWellspringMessage().
      */
     private runWellspringAgent;
+    /**
+     * Send a user message to the Wellspring agent, resuming the existing session.
+     * Called when the user submits text in INSERT mode.
+     */
+    sendWellspringMessage(text: string): Promise<void>;
     private handleTitleInput;
     private handleCharacterSelectInput;
     private handleBridgeApproachInput;

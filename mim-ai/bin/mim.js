@@ -269,7 +269,7 @@ async function initKnowledge() {
     skipped.forEach(item => console.log(`  - ${item}`));
   }
 
-  console.log('\nThe Wellspring awaits your discoveries.');
+  console.log('\nKnowledge awaits at the wellspring.');
 }
 
 /**
@@ -348,7 +348,7 @@ Commands:
   init          Initialize knowledge directory structure
   help          Show this help message
 
-The Wellspring awaits.
+The wellspring is ready.
 `);
 }
 
