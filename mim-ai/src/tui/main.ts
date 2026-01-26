@@ -58,6 +58,7 @@ import {
 } from './tileset.js';
 import { getTitleArt } from './title-screen.js';
 import { cycleMusicMode, toggleSfx, getMusicMode, isSfxEnabled, startMusic, stopMusic, playSfx } from '../sound.js';
+import { createLogViewer, LogViewer } from './logViewer.js';
 
 // ============================================================================
 // Types
@@ -594,6 +595,9 @@ class MimGame {
   private pendingReviews: PendingReview[] = [];
   private currentReviewIndex: number = 0;
 
+  // Log viewer
+  private logViewer: LogViewer | null = null;
+
   constructor(callbacks: GameCallbacks = {}) {
     this.callbacks = callbacks;
     this.state = {
@@ -756,6 +760,23 @@ class MimGame {
     term.hideCursor();
     term.grabInput(true);
 
+    // Create log viewer
+    this.logViewer = createLogViewer({
+      term: term,
+      getWidth: () => term.width,
+      getHeight: () => term.height,
+      onClose: () => {
+        term.clear();
+        this.fullDraw();
+      },
+      onCloseAndExit: () => {
+        this.stop();
+      },
+      onCloseAndSuspend: () => {
+        process.kill(process.pid, 'SIGTSTP');
+      },
+    });
+
     // Initial draw
     this.fullDraw();
 
@@ -845,6 +866,12 @@ class MimGame {
 
   private setupInput(): void {
     term.on('key', (key: string, _matches: string[], _data: unknown) => {
+      // If log viewer is open, route all keys to it
+      if (this.logViewer?.isOpen()) {
+        this.logViewer.handleKey(key);
+        return;
+      }
+
       // Handle exit confirmation
       if (this.state.pendingExit) {
         if (key === 'y' || key === 'Y') {
@@ -874,7 +901,8 @@ class MimGame {
 
       // Global audio controls (skip if in text input mode)
       const inTextInput = this.state.textInputMode || this.state.otherInputActive;
-      if (!inTextInput) {
+      const inWellspringInsert = this.state.currentScreen === 'WELLSPRING' && this.state.wellspringMode === 'INSERT';
+      if (!inTextInput && !inWellspringInsert) {
         if (key === 'm' || key === 'M') {
           cycleMusicMode();
           this.fullDraw();
@@ -1188,100 +1216,12 @@ class MimGame {
   }
 
   /**
-   * Lightweight update of just the text input line in the modal
-   * Calculates the exact position based on content layout
+   * Update the text input in the modal
+   * With multi-line wrapping, we need to redraw the full modal
    */
   private updateTextInputLine(): void {
-    if (!this.state.tileset) return;
-
-    const review = this.getCurrentReview();
-    if (!review) return;
-
-    const layout = getLayout();
-
-    // Calculate modal dimensions and position (same as buildQuestionModalBuffer)
-    const dialogueWidthTiles = 6;
-    const dialogueHeightTiles = 5;
-    const dialogueWidthChars = dialogueWidthTiles * TILE_SIZE;
-    const sceneHeightChars = SCENE_HEIGHT * CHAR_HEIGHT;
-    const dialogueHeightChars = dialogueHeightTiles * CHAR_HEIGHT;
-
-    const dialogueOffsetX = layout.tileArea.x + Math.floor((TILE_AREA_WIDTH - dialogueWidthChars) / 2);
-    const dialogueOffsetY = layout.tileArea.y + Math.floor((sceneHeightChars - dialogueHeightChars) / 2);
-
-    const middleTiles = Math.max(0, dialogueWidthTiles - 2);
-    const interiorWidth = middleTiles * TILE_SIZE;
-
-    // Rebuild the text content to find the input line position
-    const textLines: string[] = [];
-    textLines.push(`${COLORS.dim}Question ${this.currentReviewIndex + 1} of ${this.pendingReviews.length}${RESET}`);
-    textLines.push('');
-    const questionLines = this.wrapText(review.question, interiorWidth - 4);
-    for (const line of questionLines) {
-      textLines.push(`${COLORS.yellow}${line}${RESET}`);
-    }
-    textLines.push('');
-    textLines.push('');
-    textLines.push(`${COLORS.cyan}Type your answer:${RESET}`);
-
-    // This is the input line we need to update
-    const displayText = this.state.otherInputText.length > interiorWidth - 6
-      ? this.state.otherInputText.slice(-(interiorWidth - 7))
-      : this.state.otherInputText;
-    const inputLineText = `> ${displayText}\u2588`;
-    textLines.push(inputLineText);
-
-    // Calculate where this line appears in the box
-    const boxHeight = CHAR_HEIGHT * dialogueHeightTiles;
-    // Start text after top border tile (CHAR_HEIGHT rows), add 1 for padding
-    const interiorStartRow = CHAR_HEIGHT + 1;
-    const interiorEndRow = boxHeight - CHAR_HEIGHT - 1;
-    const interiorHeight = interiorEndRow - interiorStartRow + 1;
-    const textStartOffset = interiorStartRow + Math.max(0, Math.floor((interiorHeight - textLines.length) / 2));
-
-    // The input line is the last line in textLines
-    const inputLineIndex = textLines.length - 1;
-    const boxLineIndex = textStartOffset + inputLineIndex;
-
-    // Calculate screen position
-    const screenY = dialogueOffsetY + boxLineIndex;
-
-    // Sample background color from dialogue tile
-    const topLeft = extractTile(this.state.tileset, BA_DIALOGUE_TILES.TOP_LEFT);
-    const topRight = extractTile(this.state.tileset, BA_DIALOGUE_TILES.TOP_RIGHT);
-    const bgSamplePixel = topLeft[8][8];
-    const textBgColor = `\x1b[48;2;${bgSamplePixel.r};${bgSamplePixel.g};${bgSamplePixel.b}m`;
-
-    // Build the padded line
-    const visibleLength = this.stripAnsi(inputLineText).length;
-    const padding = Math.max(0, Math.floor((interiorWidth - visibleLength) / 2));
-    const rightPadding = Math.max(0, interiorWidth - padding - visibleLength);
-    const textContent = ' '.repeat(padding) + inputLineText + ' '.repeat(rightPadding);
-    const textWithBg = this.wrapTextWithBg(textContent, textBgColor);
-
-    // Get borders for this row
-    const tileRowIdx = Math.floor(boxLineIndex / CHAR_HEIGHT);
-    const charRow = boxLineIndex % CHAR_HEIGHT;
-
-    let leftBorder: string;
-    let rightBorder: string;
-    if (tileRowIdx === 0) {
-      leftBorder = renderTile(topLeft)[charRow];
-      rightBorder = renderTile(topRight)[charRow];
-    } else if (tileRowIdx === dialogueHeightTiles - 1) {
-      const bottomLeft = extractTile(this.state.tileset, BA_DIALOGUE_TILES.BOTTOM_LEFT);
-      const bottomRight = extractTile(this.state.tileset, BA_DIALOGUE_TILES.BOTTOM_RIGHT);
-      leftBorder = renderTile(bottomLeft)[charRow];
-      rightBorder = renderTile(bottomRight)[charRow];
-    } else {
-      const borders = this.createMiddleRowBorders(topLeft, topRight, charRow);
-      leftBorder = borders.left;
-      rightBorder = borders.right;
-    }
-
-    // Output just this one line
-    const lineContent = leftBorder + textWithBg + rightBorder + RESET;
-    process.stdout.write(`\x1b[${screenY};${dialogueOffsetX}H${lineContent}`);
+    // Multi-line text input affects layout, so do a full redraw
+    this.fullDraw();
   }
 
   private async setupWellspringScene(): Promise<void> {
@@ -1506,10 +1446,8 @@ class MimGame {
       logError(AGENT, `Wellspring agent failed: ${error.message}`);
       this.addMessage('mimir', `Error: ${error.message}`);
     } finally {
-      // Only set agentProcessing=false if agent is done (otherwise already set in processWellspringEvents)
-      if (this.state.agentDone) {
-        this.state.agentProcessing = false;
-      }
+      // Always reset processing state in finally - either agent is done, or we need to allow retry
+      this.state.agentProcessing = false;
       this.draw();
     }
 
@@ -1562,10 +1500,8 @@ class MimGame {
       logError(AGENT, `Wellspring message failed: ${error.message}`);
       this.addMessage('mimir', `Error: ${error.message}`);
     } finally {
-      // Only set agentProcessing=false if agent is done (otherwise already set in processWellspringEvents)
-      if (this.state.agentDone) {
-        this.state.agentProcessing = false;
-      }
+      // Always reset processing state in finally - either agent is done, or we need to allow retry
+      this.state.agentProcessing = false;
       this.draw();
     }
 
@@ -1952,6 +1888,13 @@ class MimGame {
         case 'G':
           this.state.wellspringScrollOffset = 999999;
           this.draw();
+          return;
+
+        case 'o':
+          // Open log viewer
+          if (this.logViewer) {
+            this.logViewer.open();
+          }
           return;
 
         case 'b':
@@ -2865,10 +2808,37 @@ class MimGame {
       // Show text input or options
       if (this.state.otherInputActive) {
         textLines.push(`${COLORS.cyan}Type your answer:${RESET}`);
-        const displayText = this.state.otherInputText.length > interiorWidth - 6
-          ? this.state.otherInputText.slice(-(interiorWidth - 7))
-          : this.state.otherInputText;
-        textLines.push(`> ${displayText}\u2588`);
+
+        // Wrap text to fit interior width, reserve space for cursor
+        const maxLineWidth = interiorWidth - 4; // Leave room for borders and padding
+        const maxLines = 5;
+
+        if (this.state.otherInputText.length === 0) {
+          // Empty - just show cursor
+          textLines.push(`\u2588`);
+        } else {
+          // Wrap text into lines
+          const wrappedLines: string[] = [];
+          let remaining = this.state.otherInputText;
+          while (remaining.length > 0 && wrappedLines.length < maxLines) {
+            if (remaining.length <= maxLineWidth) {
+              wrappedLines.push(remaining);
+              remaining = '';
+            } else {
+              wrappedLines.push(remaining.slice(0, maxLineWidth));
+              remaining = remaining.slice(maxLineWidth);
+            }
+          }
+
+          // Add lines, cursor on last line
+          for (let i = 0; i < wrappedLines.length; i++) {
+            const isLastLine = i === wrappedLines.length - 1;
+            const line = wrappedLines[i];
+            textLines.push(isLastLine ? `${line}\u2588` : line);
+          }
+        }
+
+        textLines.push(`${COLORS.dim}[Enter] Submit  [ESC] Cancel${COLORS.reset}`);
       } else {
         // Show options [1] [2] [3] [4]
         for (let i = 0; i < review.options.length && i < 4; i++) {
@@ -3273,9 +3243,12 @@ class MimGame {
 
     // Calculate visible area for messages (between header and footer)
     const headerEndY = y;
-    // Footer: input line (in INSERT mode when not done) + hints line
+    // Footer layout based on mode:
+    // INSERT mode: input line + 1-line status bar = 2 lines
+    // SCROLL mode: 2-line status bar = 2 lines
+    // Done mode: 1-line instruction = 1 line
     const showInputLine = this.state.wellspringMode === 'INSERT' && !this.state.agentDone;
-    const footerLines = showInputLine ? 3 : 2; // Input line + status bar + hints (or just status + hints)
+    const footerLines = this.state.agentDone ? 1 : (showInputLine ? 2 : 2);
     const instructionY = layout.chatArea.y + layout.chatArea.height - footerLines;
     const visibleHeight = instructionY - headerEndY;
 
@@ -3299,57 +3272,61 @@ class MimGame {
       }
     }
 
-    // Draw input line when in INSERT mode and not done
+    // Draw footer based on mode (Arbiter-style status bars)
     let currentY = instructionY;
-    if (showInputLine) {
+
+    // Color constants for status bars
+    const bgBrown = '\x1b[48;2;139;69;19m';
+    const cGreen = '\x1b[1;92m';   // bold bright green
+    const cYellow = '\x1b[1;93m';  // bold bright yellow
+    const cRed = '\x1b[1;91m';     // bold bright red
+    const DIM = '\x1b[38;2;140;140;140m';
+
+    // Get audio status for second line
+    const musicMode = getMusicMode();
+    const sfxOn = isSfxEnabled();
+    const musicColor = musicMode === 'on' ? cGreen : musicMode === 'quiet' ? cYellow : cRed;
+    const musicText = musicMode.toUpperCase();
+    const sfxColor = sfxOn ? cGreen : cRed;
+    const sfxText = sfxOn ? 'ON' : 'OFF';
+
+    if (this.state.agentDone) {
+      // Done state - single line with exit instruction and audio controls
       term.moveTo(x, currentY);
-      // Mode indicator + input buffer with cursor
-      const modeIndicator = `${COLORS.bgGreen}${COLORS.black} INSERT ${COLORS.reset} `;
+      const audioStatus = this.getAudioStatusString();
+      process.stdout.write(`${COLORS.green}[ESC] Depart the Wellspring${COLORS.reset}  ${COLORS.dim}·${COLORS.reset}  ${audioStatus}`);
+    } else if (this.state.wellspringMode === 'INSERT') {
+      // INSERT mode - input line with cursor, then single-line green status bar
+      term.moveTo(x, currentY);
+
+      // Input line with cursor (no badge here, badge goes on status bar)
       const cursorChar = '\u2588'; // Block cursor
       const inputDisplay = this.state.wellspringInputBuffer + cursorChar;
-      const maxInputWidth = width - 10; // Leave room for mode indicator
+      const maxInputWidth = width - 2;
       const truncatedInput = inputDisplay.length > maxInputWidth
         ? inputDisplay.substring(inputDisplay.length - maxInputWidth)
         : inputDisplay;
-      process.stdout.write(`${modeIndicator}${COLORS.white}${truncatedInput}${COLORS.reset}`);
+      process.stdout.write(`${COLORS.white}${truncatedInput}${COLORS.reset}`);
       currentY++;
-    }
 
-    // Status bar with mode-appropriate hints
-    term.moveTo(x, currentY);
-    const canScrollUp = this.state.wellspringScrollOffset > 0;
-    const canScrollDown = this.state.wellspringScrollOffset < maxScroll;
-
-    if (this.state.agentProcessing) {
-      // Show thinking indicator while agent is processing
-      const dots = '.'.repeat((this.state.blinkCycle % 4) + 1);
-      process.stdout.write(`${COLORS.cyan}Mimir is thinking${dots}${COLORS.reset}`);
-    } else if (this.state.wellspringMode === 'INSERT' && !this.state.agentDone) {
-      // INSERT mode hints
-      process.stdout.write(`${COLORS.dim}[Enter] Send  [ESC] Scroll mode${COLORS.reset}`);
-    } else if (this.state.wellspringMode === 'SCROLL' && !this.state.agentDone) {
-      // SCROLL mode hints
-      const scrollHints = canScrollUp || canScrollDown
-        ? `${COLORS.dim}[i] Type  [j/k] scroll  [g/G] top/bottom${COLORS.reset}`
-        : `${COLORS.dim}[i] Type${COLORS.reset}`;
-      process.stdout.write(scrollHints);
-    } else if (this.state.agentDone) {
-      // Done state - just show scroll hints if scrollable
-      const scrollHint = canScrollUp || canScrollDown
-        ? `${COLORS.dim}[j/k] scroll  [g/G] top/bottom${COLORS.reset}`
-        : '';
-      process.stdout.write(scrollHint);
-    }
-    currentY++;
-
-    // Instructions at bottom (with integrated audio controls)
-    const bottomY = layout.chatArea.y + layout.chatArea.height - 1;
-    term.moveTo(x, bottomY);
-    const audioStatus = this.getAudioStatusString();
-    if (this.state.agentDone) {
-      process.stdout.write(`${COLORS.green}[ESC] Depart the Wellspring${COLORS.reset}  ${COLORS.dim}·${COLORS.reset}  ${audioStatus}`);
+      // Single-line status bar with green INSERT badge
+      term.moveTo(x, currentY);
+      const insertBadge = `${COLORS.bgGreen}${COLORS.black} INSERT ${COLORS.reset}`;
+      const insertHints = `${DIM}[Enter] Send  [ESC] Scroll  ·  [Ctrl+C] Quit${COLORS.reset}`;
+      process.stdout.write(`${insertBadge}     ${insertHints}`);
     } else {
-      process.stdout.write(`${COLORS.dim}[Ctrl+C] Quit  ·${COLORS.reset}  ${audioStatus}`);
+      // SCROLL mode - two-line brown status bar
+      term.moveTo(x, currentY);
+      const scrollBadge = `${bgBrown}${COLORS.brightWhite} SCROLL ${COLORS.reset}`;
+      const scrollHints = `${DIM}[i] Insert  [↑/↓] Scroll  [Ctrl+C] Quit${COLORS.reset}`;
+      process.stdout.write(`${scrollBadge}     ${scrollHints}`);
+      currentY++;
+
+      // Second line with audio controls (indented to align with first line hints)
+      term.moveTo(x, currentY);
+      const indent = '            '; // ~12 chars to align with first line after badge
+      const audioLine = `${indent}${DIM}[o] Log  [m] Music(${musicColor}${musicText}${COLORS.reset}${DIM})  [s] SFX(${sfxColor}${sfxText}${COLORS.reset}${DIM})${COLORS.reset}`;
+      process.stdout.write(audioLine);
     }
   }
 

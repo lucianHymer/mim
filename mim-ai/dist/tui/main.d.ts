@@ -48,6 +48,7 @@ declare class MimGame {
     private odinSprite;
     private pendingReviews;
     private currentReviewIndex;
+    private logViewer;
     constructor(callbacks?: GameCallbacks);
     /**
      * Generate the audio status string showing music and SFX mode
@@ -93,8 +94,8 @@ declare class MimGame {
      */
     private delay;
     /**
-     * Lightweight update of just the text input line in the modal
-     * Calculates the exact position based on content layout
+     * Update the text input in the modal
+     * With multi-line wrapping, we need to redraw the full modal
      */
     private updateTextInputLine;
     private setupWellspringScene;
