@@ -21944,9 +21944,13 @@ var ReviewEntrySchema = external_exports.object({
   question: external_exports.string(),
   options: external_exports.array(external_exports.string()),
   knowledge_file: external_exports.string(),
-  agent_notes: external_exports.string(),
-  auto_apply: external_exports.boolean().optional()
+  agent_notes: external_exports.string().optional(),
+  context: external_exports.string().optional(),
+  // Additional context for the reviewer
+  auto_apply: external_exports.boolean().optional(),
   // If true, Wellspring applies without user interaction
+  answer: external_exports.string().optional()
+  // User's answer once reviewed
 });
 var ChangesReviewerOutputSchema = external_exports.object({
   reviews: external_exports.array(ReviewEntrySchema),
@@ -22103,10 +22107,11 @@ function parseKnowledgeEntries(category, filename, content) {
   return entries;
 }
 
-// hooks/run-analysis.js
+// dist/hooks/run-analysis.js
 import fs4 from "node:fs";
 import path3 from "node:path";
 import { execSync } from "node:child_process";
+process.setMaxListeners(20);
 var AGENT = AGENTS.CHANGES_REVIEWER;
 function findClaudeExecutable() {
   if (process.env.CLAUDE_BINARY) {
@@ -22134,7 +22139,13 @@ function findClaudeExecutable() {
 var CLAUDE_EXECUTABLE = findClaudeExecutable();
 var KNOWLEDGE_DIR2 = ".claude/knowledge";
 var PENDING_DIR2 = `${KNOWLEDGE_DIR2}/pending-review`;
-var CATEGORIES = ["architecture", "patterns", "dependencies", "workflows", "gotchas"];
+var CATEGORIES = [
+  "architecture",
+  "patterns",
+  "dependencies",
+  "workflows",
+  "gotchas"
+];
 var LOCK_FILE = path3.join(KNOWLEDGE_DIR2, ".analysis-lock");
 var MAX_CONCURRENT_INQUISITORS = 5;
 function processExists(pid) {
@@ -22177,7 +22188,8 @@ function pendingReviewExists(entryId) {
 function getPendingReviews() {
   const reviews = [];
   const dir = path3.join(process.cwd(), PENDING_DIR2);
-  if (!fs4.existsSync(dir)) return reviews;
+  if (!fs4.existsSync(dir))
+    return reviews;
   const files = fs4.readdirSync(dir).filter((f) => f.endsWith(".json"));
   for (const file of files) {
     try {
@@ -22186,7 +22198,7 @@ function getPendingReviews() {
       if (!review.answer) {
         reviews.push({ ...review, _filename: file });
       }
-    } catch (e) {
+    } catch {
       logWarn(AGENT, `Failed to read review file: ${file}`);
     }
   }
@@ -22202,7 +22214,7 @@ function deletePendingReview(filename) {
 function getCurrentHead() {
   try {
     return execSync("git rev-parse HEAD", { encoding: "utf-8" }).trim();
-  } catch (error2) {
+  } catch {
     return null;
   }
 }
@@ -22221,7 +22233,7 @@ function getAllKnowledgeEntries() {
         const content = fs4.readFileSync(filepath, "utf-8");
         const parsed = parseKnowledgeEntries(category, file, content);
         entries.push(...parsed);
-      } catch (error2) {
+      } catch {
         logWarn(AGENT, `Failed to read knowledge file: ${filepath}`);
       }
     }
@@ -22272,7 +22284,8 @@ Respond with:
     }
     return { review, stillRelevant: true, reason: "Could not determine" };
   } catch (error2) {
-    logWarn(AGENT, `Failed to check review relevance: ${error2.message}`);
+    const message = error2 instanceof Error ? error2.message : String(error2);
+    logWarn(AGENT, `Failed to check review relevance: ${message}`);
     return { review, stillRelevant: true, reason: "Error checking" };
   }
 }
@@ -22297,7 +22310,12 @@ Verify this knowledge against the actual codebase. Check if the referenced code 
         systemPrompt: INQUISITOR_SYSTEM_PROMPT,
         canUseTool: async (tool, input) => {
           const allowedTools = ["Read", "Glob", "Grep"];
-          const allowedBashPrefixes = ["git log", "git show", "git diff", "git blame"];
+          const allowedBashPrefixes = [
+            "git log",
+            "git show",
+            "git diff",
+            "git blame"
+          ];
           if (allowedTools.includes(tool)) {
             return { behavior: "allow", updatedInput: input };
           }
@@ -22306,9 +22324,15 @@ Verify this knowledge against the actual codebase. Check if the referenced code 
             if (allowedBashPrefixes.some((prefix) => cmd.startsWith(prefix))) {
               return { behavior: "allow", updatedInput: input };
             }
-            return { behavior: "deny", message: "Only git read commands allowed" };
+            return {
+              behavior: "deny",
+              message: "Only git read commands allowed"
+            };
           }
-          return { behavior: "deny", message: "Tool not allowed for inquisitor" };
+          return {
+            behavior: "deny",
+            message: "Tool not allowed for inquisitor"
+          };
         },
         outputFormat: {
           type: "json_schema",
@@ -22323,17 +22347,18 @@ Verify this knowledge against the actual codebase. Check if the referenced code 
           output: event.structured_output,
           success: true
         };
-      } else if (event.type === "result" && event.subtype === "error") {
+      } else if (event.type === "result" && (event.subtype === "error_during_execution" || event.subtype === "error_max_turns" || event.subtype === "error_max_budget_usd" || event.subtype === "error_max_structured_output_retries")) {
         return {
           entry,
-          error: event.error,
+          error: event.error || event.subtype,
           success: false
         };
       }
     }
     return { entry, error: "No result received", success: false };
   } catch (error2) {
-    return { entry, error: error2.message, success: false };
+    const message = error2 instanceof Error ? error2.message : String(error2);
+    return { entry, error: message, success: false };
   }
 }
 function processInquisitorResult(result) {
@@ -22342,7 +22367,8 @@ function processInquisitorResult(result) {
     return { autoFix: null, review: null };
   }
   const output = result.output;
-  if (!output) return { autoFix: null, review: null };
+  if (!output)
+    return { autoFix: null, review: null };
   if (output.status === "valid") {
     logInfo(AGENT, `Entry ${output.entry_id} is valid`);
     return { autoFix: null, review: null };
@@ -22378,7 +22404,11 @@ File: ${result.entry.file}
 Findings: ${output.findings.current_behavior}
 
 Location recommendation: ${output.location_context.scope} - ${output.location_context.reason}`,
-        options: output.issue.review_options || ["Keep current documentation", "Update to match code", "Remove this entry"],
+        options: output.issue.review_options || [
+          "Keep current documentation",
+          "Update to match code",
+          "Remove this entry"
+        ],
         knowledge_file: `${result.entry.category}/${result.entry.file}`
       };
       writePendingReview(review);
@@ -22411,10 +22441,14 @@ async function runInquisitorSwarm(entries) {
     });
     const batchResults = await Promise.all(batchPromises);
     for (const result of batchResults) {
-      if (result.success) stats.successful++;
-      else stats.failed++;
-      if (result.autoFix) stats.autoFixes++;
-      if (result.review) stats.reviews++;
+      if (result.success)
+        stats.successful++;
+      else
+        stats.failed++;
+      if (result.autoFix)
+        stats.autoFixes++;
+      if (result.review)
+        stats.reviews++;
     }
   }
   return stats;
@@ -22435,9 +22469,7 @@ async function main() {
       const pendingReviews = getPendingReviews();
       if (pendingReviews.length > 0) {
         logInfo(AGENT, `Checking ${pendingReviews.length} existing pending reviews...`);
-        const reviewChecks = await Promise.all(
-          pendingReviews.map((review) => checkReviewRelevance(review))
-        );
+        const reviewChecks = await Promise.all(pendingReviews.map((review) => checkReviewRelevance(review)));
         let staleCount = 0;
         for (const check2 of reviewChecks) {
           if (!check2.stillRelevant) {
@@ -22468,7 +22500,8 @@ async function main() {
       });
       logInfo(AGENT, "Analysis state updated");
     } catch (error2) {
-      logError(AGENT, `Analysis failed: ${error2.message}`);
+      const message = error2 instanceof Error ? error2.message : String(error2);
+      logError(AGENT, `Analysis failed: ${message}`);
       process.exit(1);
     }
     logInfo(AGENT, "Analysis completed successfully");
@@ -22477,6 +22510,7 @@ async function main() {
   }
 }
 main().catch((error2) => {
-  logError(AGENT, `Unhandled error: ${error2.message}`);
+  const message = error2 instanceof Error ? error2.message : String(error2);
+  logError(AGENT, `Unhandled error: ${message}`);
   process.exit(1);
 });

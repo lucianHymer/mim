@@ -70,11 +70,19 @@ async function build() {
       'MCP Server'
     );
 
-    // Bundle run-analysis hook as ESM (needs import.meta.url for claude-agent-sdk)
+    // Bundle hooks from compiled TypeScript output
+    // ESM format is required to preserve import.meta.url for claude-agent-sdk
     await bundleFile(
-      join(projectRoot, 'hooks/run-analysis.js'),
+      join(projectRoot, 'dist/hooks/run-analysis.js'),
       join(projectRoot, 'hooks/run-analysis.bundled.mjs'),
       'Analysis Hook',
+      'esm'
+    );
+
+    await bundleFile(
+      join(projectRoot, 'dist/hooks/session-start.js'),
+      join(projectRoot, 'hooks/session-start.bundled.mjs'),
+      'Session Start Hook',
       'esm'
     );
 

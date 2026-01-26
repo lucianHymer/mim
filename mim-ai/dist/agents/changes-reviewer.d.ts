@@ -6,8 +6,10 @@ export declare const ReviewEntrySchema: z.ZodObject<{
     question: z.ZodString;
     options: z.ZodArray<z.ZodString, "many">;
     knowledge_file: z.ZodString;
-    agent_notes: z.ZodString;
+    agent_notes: z.ZodOptional<z.ZodString>;
+    context: z.ZodOptional<z.ZodString>;
     auto_apply: z.ZodOptional<z.ZodBoolean>;
+    answer: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     options: string[];
     type: "stale" | "conflict" | "outdated" | "auto_fix";
@@ -15,8 +17,10 @@ export declare const ReviewEntrySchema: z.ZodObject<{
     id: string;
     question: string;
     knowledge_file: string;
-    agent_notes: string;
+    agent_notes?: string | undefined;
+    context?: string | undefined;
     auto_apply?: boolean | undefined;
+    answer?: string | undefined;
 }, {
     options: string[];
     type: "stale" | "conflict" | "outdated" | "auto_fix";
@@ -24,8 +28,10 @@ export declare const ReviewEntrySchema: z.ZodObject<{
     id: string;
     question: string;
     knowledge_file: string;
-    agent_notes: string;
+    agent_notes?: string | undefined;
+    context?: string | undefined;
     auto_apply?: boolean | undefined;
+    answer?: string | undefined;
 }>;
 export declare const ChangesReviewerOutputSchema: z.ZodObject<{
     reviews: z.ZodArray<z.ZodObject<{
@@ -35,8 +41,10 @@ export declare const ChangesReviewerOutputSchema: z.ZodObject<{
         question: z.ZodString;
         options: z.ZodArray<z.ZodString, "many">;
         knowledge_file: z.ZodString;
-        agent_notes: z.ZodString;
+        agent_notes: z.ZodOptional<z.ZodString>;
+        context: z.ZodOptional<z.ZodString>;
         auto_apply: z.ZodOptional<z.ZodBoolean>;
+        answer: z.ZodOptional<z.ZodString>;
     }, "strip", z.ZodTypeAny, {
         options: string[];
         type: "stale" | "conflict" | "outdated" | "auto_fix";
@@ -44,8 +52,10 @@ export declare const ChangesReviewerOutputSchema: z.ZodObject<{
         id: string;
         question: string;
         knowledge_file: string;
-        agent_notes: string;
+        agent_notes?: string | undefined;
+        context?: string | undefined;
         auto_apply?: boolean | undefined;
+        answer?: string | undefined;
     }, {
         options: string[];
         type: "stale" | "conflict" | "outdated" | "auto_fix";
@@ -53,8 +63,10 @@ export declare const ChangesReviewerOutputSchema: z.ZodObject<{
         id: string;
         question: string;
         knowledge_file: string;
-        agent_notes: string;
+        agent_notes?: string | undefined;
+        context?: string | undefined;
         auto_apply?: boolean | undefined;
+        answer?: string | undefined;
     }>, "many">;
     auto_fixed: z.ZodArray<z.ZodString, "many">;
     done: z.ZodBoolean;
@@ -67,8 +79,10 @@ export declare const ChangesReviewerOutputSchema: z.ZodObject<{
         id: string;
         question: string;
         knowledge_file: string;
-        agent_notes: string;
+        agent_notes?: string | undefined;
+        context?: string | undefined;
         auto_apply?: boolean | undefined;
+        answer?: string | undefined;
     }[];
     auto_fixed: string[];
 }, {
@@ -80,8 +94,10 @@ export declare const ChangesReviewerOutputSchema: z.ZodObject<{
         id: string;
         question: string;
         knowledge_file: string;
-        agent_notes: string;
+        agent_notes?: string | undefined;
+        context?: string | undefined;
         auto_apply?: boolean | undefined;
+        answer?: string | undefined;
     }[];
     auto_fixed: string[];
 }>;

@@ -10,8 +10,10 @@ export const ReviewEntrySchema = z.object({
   question: z.string(),
   options: z.array(z.string()),
   knowledge_file: z.string(),
-  agent_notes: z.string(),
+  agent_notes: z.string().optional(),
+  context: z.string().optional(),  // Additional context for the reviewer
   auto_apply: z.boolean().optional(),  // If true, Wellspring applies without user interaction
+  answer: z.string().optional(),  // User's answer once reviewed
 });
 
 export const ChangesReviewerOutputSchema = z.object({

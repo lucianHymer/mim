@@ -10,20 +10,26 @@
  * 4. Collect and synthesize results into reviews
  */
 
-import { query } from '@anthropic-ai/claude-agent-sdk';
-import { logInfo, logWarn, logError, AGENTS } from '../dist/utils/logger.js';
+// Increase max listeners to avoid warnings when running multiple concurrent agents
+process.setMaxListeners(20);
+
+import { query } from "@anthropic-ai/claude-agent-sdk";
+import { logInfo, logWarn, logError, AGENTS } from "../utils/logger.js";
 import {
   writePendingReview,
   writeLastAnalysis,
-} from '../dist/agents/changes-reviewer.js';
+  type ReviewEntry,
+} from "../agents/changes-reviewer.js";
 import {
   INQUISITOR_SYSTEM_PROMPT,
   getInquisitorOutputJsonSchema,
   parseKnowledgeEntries,
-} from '../dist/agents/inquisitor.js';
-import fs from 'node:fs';
-import path from 'node:path';
-import { execSync } from 'node:child_process';
+  type KnowledgeEntry,
+  type InquisitorOutput,
+} from "../agents/inquisitor.js";
+import fs from "node:fs";
+import path from "node:path";
+import { execSync } from "node:child_process";
 
 const AGENT = AGENTS.CHANGES_REVIEWER;
 
@@ -31,7 +37,7 @@ const AGENT = AGENTS.CHANGES_REVIEWER;
  * Find the Claude Code executable path
  * Required because bundling breaks the SDK's auto-detection via import.meta.url
  */
-function findClaudeExecutable() {
+function findClaudeExecutable(): string {
   // Check env var first
   if (process.env.CLAUDE_BINARY) {
     return process.env.CLAUDE_BINARY;
@@ -39,7 +45,7 @@ function findClaudeExecutable() {
 
   // Try to find claude in PATH
   try {
-    const claudePath = execSync('which claude', { encoding: 'utf-8' }).trim();
+    const claudePath = execSync("which claude", { encoding: "utf-8" }).trim();
     if (claudePath && fs.existsSync(claudePath)) {
       return claudePath;
     }
@@ -49,9 +55,9 @@ function findClaudeExecutable() {
 
   // Common installation locations
   const commonPaths = [
-    path.join(process.env.HOME || '', '.local', 'bin', 'claude'),
-    '/usr/local/bin/claude',
-    '/usr/bin/claude',
+    path.join(process.env.HOME || "", ".local", "bin", "claude"),
+    "/usr/local/bin/claude",
+    "/usr/bin/claude",
   ];
 
   for (const p of commonPaths) {
@@ -60,22 +66,64 @@ function findClaudeExecutable() {
     }
   }
 
-  throw new Error('Could not find Claude Code executable. Set CLAUDE_BINARY env var or ensure claude is in PATH.');
+  throw new Error(
+    "Could not find Claude Code executable. Set CLAUDE_BINARY env var or ensure claude is in PATH."
+  );
 }
 
 const CLAUDE_EXECUTABLE = findClaudeExecutable();
-const KNOWLEDGE_DIR = '.claude/knowledge';
+const KNOWLEDGE_DIR = ".claude/knowledge";
 const PENDING_DIR = `${KNOWLEDGE_DIR}/pending-review`;
-const CATEGORIES = ['architecture', 'patterns', 'dependencies', 'workflows', 'gotchas'];
-const LOCK_FILE = path.join(KNOWLEDGE_DIR, '.analysis-lock');
+const CATEGORIES = [
+  "architecture",
+  "patterns",
+  "dependencies",
+  "workflows",
+  "gotchas",
+];
+const LOCK_FILE = path.join(KNOWLEDGE_DIR, ".analysis-lock");
 
 // Concurrency limit for inquisitor agents
 const MAX_CONCURRENT_INQUISITORS = 5;
 
+interface LockFile {
+  pid: number;
+  started_at: string;
+}
+
+interface PendingReview extends ReviewEntry {
+  _filename: string;
+}
+
+interface ReviewRelevanceResult {
+  review: PendingReview;
+  stillRelevant: boolean;
+  reason: string;
+}
+
+interface InquisitorResult {
+  entry: KnowledgeEntry;
+  output?: InquisitorOutput;
+  error?: string;
+  success: boolean;
+}
+
+interface ProcessResult {
+  autoFix: boolean | null;
+  review: ReviewEntry | null;
+}
+
+interface SwarmStats {
+  successful: number;
+  failed: number;
+  autoFixes: number;
+  reviews: number;
+}
+
 /**
  * Check if a process with the given PID exists
  */
-function processExists(pid) {
+function processExists(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
@@ -88,12 +136,12 @@ function processExists(pid) {
  * Acquire a lock for the analysis process
  * Returns true if lock was acquired, false if another process is already running
  */
-function acquireLock() {
+function acquireLock(): boolean {
   const lockPath = path.join(process.cwd(), LOCK_FILE);
 
   if (fs.existsSync(lockPath)) {
     try {
-      const lock = JSON.parse(fs.readFileSync(lockPath, 'utf-8'));
+      const lock: LockFile = JSON.parse(fs.readFileSync(lockPath, "utf-8"));
       if (processExists(lock.pid)) {
         logInfo(AGENT, `Analysis already running (PID ${lock.pid}), skipping`);
         return false;
@@ -104,10 +152,17 @@ function acquireLock() {
     }
   }
 
-  fs.writeFileSync(lockPath, JSON.stringify({
-    pid: process.pid,
-    started_at: new Date().toISOString()
-  }, null, 2));
+  fs.writeFileSync(
+    lockPath,
+    JSON.stringify(
+      {
+        pid: process.pid,
+        started_at: new Date().toISOString(),
+      },
+      null,
+      2
+    )
+  );
 
   return true;
 }
@@ -115,7 +170,7 @@ function acquireLock() {
 /**
  * Release the lock file
  */
-function releaseLock() {
+function releaseLock(): void {
   const lockPath = path.join(process.cwd(), LOCK_FILE);
   if (fs.existsSync(lockPath)) {
     fs.unlinkSync(lockPath);
@@ -125,7 +180,7 @@ function releaseLock() {
 /**
  * Check if a pending review already exists for the given entry ID
  */
-function pendingReviewExists(entryId) {
+function pendingReviewExists(entryId: string): boolean {
   const reviewPath = path.join(process.cwd(), PENDING_DIR, `${entryId}.json`);
   return fs.existsSync(reviewPath);
 }
@@ -133,21 +188,22 @@ function pendingReviewExists(entryId) {
 /**
  * Read existing pending reviews
  */
-function getPendingReviews() {
-  const reviews = [];
+function getPendingReviews(): PendingReview[] {
+  const reviews: PendingReview[] = [];
   const dir = path.join(process.cwd(), PENDING_DIR);
 
   if (!fs.existsSync(dir)) return reviews;
 
-  const files = fs.readdirSync(dir).filter(f => f.endsWith('.json'));
+  const files = fs.readdirSync(dir).filter((f) => f.endsWith(".json"));
   for (const file of files) {
     try {
-      const content = fs.readFileSync(path.join(dir, file), 'utf-8');
-      const review = JSON.parse(content);
-      if (!review.answer) {  // Only unanswered reviews
+      const content = fs.readFileSync(path.join(dir, file), "utf-8");
+      const review = JSON.parse(content) as ReviewEntry;
+      if (!review.answer) {
+        // Only unanswered reviews
         reviews.push({ ...review, _filename: file });
       }
-    } catch (e) {
+    } catch {
       logWarn(AGENT, `Failed to read review file: ${file}`);
     }
   }
@@ -158,7 +214,7 @@ function getPendingReviews() {
 /**
  * Delete a pending review file
  */
-function deletePendingReview(filename) {
+function deletePendingReview(filename: string): void {
   const filepath = path.join(process.cwd(), PENDING_DIR, filename);
   if (fs.existsSync(filepath)) {
     fs.unlinkSync(filepath);
@@ -169,10 +225,10 @@ function deletePendingReview(filename) {
 /**
  * Get the current git HEAD commit hash
  */
-function getCurrentHead() {
+function getCurrentHead(): string | null {
   try {
-    return execSync('git rev-parse HEAD', { encoding: 'utf-8' }).trim();
-  } catch (error) {
+    return execSync("git rev-parse HEAD", { encoding: "utf-8" }).trim();
+  } catch {
     return null;
   }
 }
@@ -180,8 +236,8 @@ function getCurrentHead() {
 /**
  * Read all knowledge files and parse into individual entries
  */
-function getAllKnowledgeEntries() {
-  const entries = [];
+function getAllKnowledgeEntries(): KnowledgeEntry[] {
+  const entries: KnowledgeEntry[] = [];
   const baseDir = path.join(process.cwd(), KNOWLEDGE_DIR);
 
   for (const category of CATEGORIES) {
@@ -191,15 +247,15 @@ function getAllKnowledgeEntries() {
       continue;
     }
 
-    const files = fs.readdirSync(categoryDir).filter(f => f.endsWith('.md'));
+    const files = fs.readdirSync(categoryDir).filter((f) => f.endsWith(".md"));
 
     for (const file of files) {
       const filepath = path.join(categoryDir, file);
       try {
-        const content = fs.readFileSync(filepath, 'utf-8');
+        const content = fs.readFileSync(filepath, "utf-8");
         const parsed = parseKnowledgeEntries(category, file, content);
         entries.push(...parsed);
-      } catch (error) {
+      } catch {
         logWarn(AGENT, `Failed to read knowledge file: ${filepath}`);
       }
     }
@@ -212,7 +268,9 @@ function getAllKnowledgeEntries() {
  * Check if a pending review is still relevant
  * Returns true if the review should be kept, false if it's now moot
  */
-async function checkReviewRelevance(review) {
+async function checkReviewRelevance(
+  review: PendingReview
+): Promise<ReviewRelevanceResult> {
   const prompt = `Check if this pending review is still relevant:
 
 **Review ID:** ${review.id}
@@ -236,41 +294,44 @@ Respond with:
     const session = query({
       prompt,
       options: {
-        model: 'haiku',
+        model: "haiku",
         pathToClaudeCodeExecutable: CLAUDE_EXECUTABLE,
-        systemPrompt: 'You are checking if a pending knowledge review is still relevant. Be brief and direct.',
-        canUseTool: async (tool, input) => {
-          const allowedTools = ['Read', 'Glob', 'Grep'];
+        systemPrompt:
+          "You are checking if a pending knowledge review is still relevant. Be brief and direct.",
+        canUseTool: async (tool: string, input: Record<string, unknown>) => {
+          const allowedTools = ["Read", "Glob", "Grep"];
           if (allowedTools.includes(tool)) {
-            return { behavior: 'allow', updatedInput: input };
+            return { behavior: "allow" as const, updatedInput: input };
           }
-          return { behavior: 'deny', message: 'Tool not allowed' };
+          return { behavior: "deny" as const, message: "Tool not allowed" };
         },
       },
     });
 
     for await (const event of session) {
-      if (event.type === 'result' && event.subtype === 'success') {
-        const text = event.text || '';
+      if (event.type === "result" && event.subtype === "success") {
+        const text = (event as { text?: string }).text || "";
         // Simple heuristic: if response contains "still_relevant: false" or "no longer", it's moot
-        const isMoot = text.toLowerCase().includes('still_relevant: false') ||
-                       text.toLowerCase().includes('no longer relevant') ||
-                       text.toLowerCase().includes('issue resolved') ||
-                       text.toLowerCase().includes('has been fixed');
+        const isMoot =
+          text.toLowerCase().includes("still_relevant: false") ||
+          text.toLowerCase().includes("no longer relevant") ||
+          text.toLowerCase().includes("issue resolved") ||
+          text.toLowerCase().includes("has been fixed");
         return { review, stillRelevant: !isMoot, reason: text };
       }
     }
-    return { review, stillRelevant: true, reason: 'Could not determine' };
+    return { review, stillRelevant: true, reason: "Could not determine" };
   } catch (error) {
-    logWarn(AGENT, `Failed to check review relevance: ${error.message}`);
-    return { review, stillRelevant: true, reason: 'Error checking' };
+    const message = error instanceof Error ? error.message : String(error);
+    logWarn(AGENT, `Failed to check review relevance: ${message}`);
+    return { review, stillRelevant: true, reason: "Error checking" };
   }
 }
 
 /**
  * Run a single inquisitor agent on one knowledge entry
  */
-async function runInquisitor(entry) {
+async function runInquisitor(entry: KnowledgeEntry): Promise<InquisitorResult> {
   const prompt = `Investigate this knowledge entry:
 
 **Entry ID:** ${entry.id}
@@ -287,30 +348,41 @@ Verify this knowledge against the actual codebase. Check if the referenced code 
     const session = query({
       prompt,
       options: {
-        model: 'haiku',
+        model: "haiku",
         pathToClaudeCodeExecutable: CLAUDE_EXECUTABLE,
         systemPrompt: INQUISITOR_SYSTEM_PROMPT,
-        canUseTool: async (tool, input) => {
+        canUseTool: async (tool: string, input: Record<string, unknown>) => {
           // Allow read-only tools and specific git commands
-          const allowedTools = ['Read', 'Glob', 'Grep'];
-          const allowedBashPrefixes = ['git log', 'git show', 'git diff', 'git blame'];
+          const allowedTools = ["Read", "Glob", "Grep"];
+          const allowedBashPrefixes = [
+            "git log",
+            "git show",
+            "git diff",
+            "git blame",
+          ];
 
           if (allowedTools.includes(tool)) {
-            return { behavior: 'allow', updatedInput: input };
+            return { behavior: "allow" as const, updatedInput: input };
           }
 
-          if (tool === 'Bash') {
-            const cmd = input?.command || '';
-            if (allowedBashPrefixes.some(prefix => cmd.startsWith(prefix))) {
-              return { behavior: 'allow', updatedInput: input };
+          if (tool === "Bash") {
+            const cmd = (input?.command as string) || "";
+            if (allowedBashPrefixes.some((prefix) => cmd.startsWith(prefix))) {
+              return { behavior: "allow" as const, updatedInput: input };
             }
-            return { behavior: 'deny', message: 'Only git read commands allowed' };
+            return {
+              behavior: "deny" as const,
+              message: "Only git read commands allowed",
+            };
           }
 
-          return { behavior: 'deny', message: 'Tool not allowed for inquisitor' };
+          return {
+            behavior: "deny" as const,
+            message: "Tool not allowed for inquisitor",
+          };
         },
         outputFormat: {
-          type: 'json_schema',
+          type: "json_schema",
           schema: getInquisitorOutputJsonSchema(),
         },
       },
@@ -318,24 +390,32 @@ Verify this knowledge against the actual codebase. Check if the referenced code 
 
     // Collect result
     for await (const event of session) {
-      if (event.type === 'result' && event.subtype === 'success') {
+      if (event.type === "result" && event.subtype === "success") {
         return {
           entry,
-          output: event.structured_output,
+          output: (event as { structured_output?: InquisitorOutput })
+            .structured_output,
           success: true,
         };
-      } else if (event.type === 'result' && event.subtype === 'error') {
+      } else if (
+        event.type === "result" &&
+        (event.subtype === "error_during_execution" ||
+          event.subtype === "error_max_turns" ||
+          event.subtype === "error_max_budget_usd" ||
+          event.subtype === "error_max_structured_output_retries")
+      ) {
         return {
           entry,
-          error: event.error,
+          error: (event as { error?: string }).error || event.subtype,
           success: false,
         };
       }
     }
 
-    return { entry, error: 'No result received', success: false };
+    return { entry, error: "No result received", success: false };
   } catch (error) {
-    return { entry, error: error.message, success: false };
+    const message = error instanceof Error ? error.message : String(error);
+    return { entry, error: message, success: false };
   }
 }
 
@@ -343,7 +423,7 @@ Verify this knowledge against the actual codebase. Check if the referenced code 
  * Process a single inquisitor result - write review immediately if needed
  * Returns stats about what was done
  */
-function processInquisitorResult(result) {
+function processInquisitorResult(result: InquisitorResult): ProcessResult {
   if (!result.success) {
     logWarn(AGENT, `Inquisitor failed for ${result.entry.id}: ${result.error}`);
     return { autoFix: null, review: null };
@@ -353,36 +433,40 @@ function processInquisitorResult(result) {
   if (!output) return { autoFix: null, review: null };
 
   // Skip valid entries
-  if (output.status === 'valid') {
+  if (output.status === "valid") {
     logInfo(AGENT, `Entry ${output.entry_id} is valid`);
     return { autoFix: null, review: null };
   }
 
   // Process issues
   if (output.issue) {
-    if (output.issue.severity === 'auto_fix' && output.issue.suggested_fix) {
+    if (output.issue.severity === "auto_fix" && output.issue.suggested_fix) {
       // Write autofix as a review with auto_apply flag - Wellspring will apply without asking
-      const review = {
+      const review: ReviewEntry = {
         id: result.entry.id,
         subject: `${result.entry.topic} - auto-fix`,
-        type: 'auto_fix',
-        question: output.issue.description,  // Describes what's being fixed
-        options: [],  // No options for autofixes - one clear fix
+        type: "auto_fix",
+        question: output.issue.description, // Describes what's being fixed
+        options: [], // No options for autofixes - one clear fix
         knowledge_file: `${result.entry.category}/${result.entry.file}`,
-        agent_notes: output.issue.suggested_fix,  // The fix to apply
-        auto_apply: true,  // Flag for Wellspring to apply without user interaction
+        agent_notes: output.issue.suggested_fix, // The fix to apply
+        auto_apply: true, // Flag for Wellspring to apply without user interaction
       };
       writePendingReview(review);
       logInfo(AGENT, `Created auto-fix review: ${review.id} - ${review.subject}`);
       return { autoFix: true, review };
-    } else if (output.issue.severity === 'needs_review') {
-      const review = {
+    } else if (output.issue.severity === "needs_review") {
+      const review: ReviewEntry = {
         id: result.entry.id,
         subject: `${result.entry.topic} - ${output.status}`,
         type: output.status,
         question: output.issue.review_question || output.issue.description,
         context: `Category: ${result.entry.category}\nFile: ${result.entry.file}\n\nFindings: ${output.findings.current_behavior}\n\nLocation recommendation: ${output.location_context.scope} - ${output.location_context.reason}`,
-        options: output.issue.review_options || ['Keep current documentation', 'Update to match code', 'Remove this entry'],
+        options: output.issue.review_options || [
+          "Keep current documentation",
+          "Update to match code",
+          "Remove this entry",
+        ],
         knowledge_file: `${result.entry.category}/${result.entry.file}`,
       };
       // Write immediately - don't wait for other inquisitors
@@ -399,9 +483,11 @@ function processInquisitorResult(result) {
  * Run inquisitors in parallel with concurrency limit
  * Writes reviews immediately as each completes (streaming, not batched)
  */
-async function runInquisitorSwarm(entries) {
+async function runInquisitorSwarm(
+  entries: KnowledgeEntry[]
+): Promise<SwarmStats> {
   // Filter out entries that already have pending reviews
-  const entriesToProcess = entries.filter(entry => {
+  const entriesToProcess = entries.filter((entry) => {
     if (pendingReviewExists(entry.id)) {
       logInfo(AGENT, `Skipping ${entry.id} - pending review already exists`);
       return false;
@@ -410,17 +496,23 @@ async function runInquisitorSwarm(entries) {
   });
 
   if (entriesToProcess.length < entries.length) {
-    logInfo(AGENT, `Filtered ${entries.length - entriesToProcess.length} entries with existing reviews`);
+    logInfo(
+      AGENT,
+      `Filtered ${entries.length - entriesToProcess.length} entries with existing reviews`
+    );
   }
 
-  const stats = { successful: 0, failed: 0, autoFixes: 0, reviews: 0 };
+  const stats: SwarmStats = { successful: 0, failed: 0, autoFixes: 0, reviews: 0 };
   const pending = [...entriesToProcess];
 
   while (pending.length > 0) {
     // Start new inquisitors up to concurrency limit
     const batch = pending.splice(0, MAX_CONCURRENT_INQUISITORS);
 
-    logInfo(AGENT, `Launching ${batch.length} inquisitors (${pending.length} remaining)`);
+    logInfo(
+      AGENT,
+      `Launching ${batch.length} inquisitors (${pending.length} remaining)`
+    );
 
     // Run batch and process each result immediately as it completes
     const batchPromises = batch.map(async (entry) => {
@@ -447,19 +539,19 @@ async function runInquisitorSwarm(entries) {
 /**
  * Main function to run the analysis
  */
-async function main() {
+async function main(): Promise<void> {
   // Acquire lock - exit early if another analysis is already running
   if (!acquireLock()) {
     return;
   }
 
   try {
-    logInfo(AGENT, 'Starting knowledge analysis (Inquisitor Swarm)');
+    logInfo(AGENT, "Starting knowledge analysis (Inquisitor Swarm)");
 
     // Get current git HEAD
     const currentHead = getCurrentHead();
     if (!currentHead) {
-      logError(AGENT, 'Failed to get current git HEAD - not a git repository?');
+      logError(AGENT, "Failed to get current git HEAD - not a git repository?");
       process.exit(1);
     }
     logInfo(AGENT, `Current HEAD: ${currentHead}`);
@@ -468,10 +560,13 @@ async function main() {
       // PHASE 1: Check existing pending reviews first
       const pendingReviews = getPendingReviews();
       if (pendingReviews.length > 0) {
-        logInfo(AGENT, `Checking ${pendingReviews.length} existing pending reviews...`);
+        logInfo(
+          AGENT,
+          `Checking ${pendingReviews.length} existing pending reviews...`
+        );
 
         const reviewChecks = await Promise.all(
-          pendingReviews.map(review => checkReviewRelevance(review))
+          pendingReviews.map((review) => checkReviewRelevance(review))
         );
 
         let staleCount = 0;
@@ -490,7 +585,7 @@ async function main() {
       // PHASE 2: Investigate knowledge entries
       const entries = getAllKnowledgeEntries();
       if (entries.length === 0) {
-        logInfo(AGENT, 'No knowledge entries found to analyze');
+        logInfo(AGENT, "No knowledge entries found to analyze");
         writeLastAnalysis({
           timestamp: new Date().toISOString(),
           commit_hash: currentHead,
@@ -501,28 +596,35 @@ async function main() {
 
       // Run inquisitor swarm - reviews are written immediately as each completes
       const stats = await runInquisitorSwarm(entries);
-      logInfo(AGENT, `Inquisitor swarm complete: ${stats.successful}/${stats.successful + stats.failed} successful`);
-      logInfo(AGENT, `Analysis complete: ${stats.autoFixes} auto-fixes, ${stats.reviews} new reviews`);
+      logInfo(
+        AGENT,
+        `Inquisitor swarm complete: ${stats.successful}/${stats.successful + stats.failed} successful`
+      );
+      logInfo(
+        AGENT,
+        `Analysis complete: ${stats.autoFixes} auto-fixes, ${stats.reviews} new reviews`
+      );
 
       // Update last analysis state
       writeLastAnalysis({
         timestamp: new Date().toISOString(),
         commit_hash: currentHead,
       });
-      logInfo(AGENT, 'Analysis state updated');
-
+      logInfo(AGENT, "Analysis state updated");
     } catch (error) {
-      logError(AGENT, `Analysis failed: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      logError(AGENT, `Analysis failed: ${message}`);
       process.exit(1);
     }
 
-    logInfo(AGENT, 'Analysis completed successfully');
+    logInfo(AGENT, "Analysis completed successfully");
   } finally {
     releaseLock();
   }
 }
 
 main().catch((error) => {
-  logError(AGENT, `Unhandled error: ${error.message}`);
+  const message = error instanceof Error ? error.message : String(error);
+  logError(AGENT, `Unhandled error: ${message}`);
   process.exit(1);
 });
