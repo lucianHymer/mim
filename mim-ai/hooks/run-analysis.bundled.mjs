@@ -22409,7 +22409,8 @@ Location recommendation: ${output.location_context.scope} - ${output.location_co
           "Update to match code",
           "Remove this entry"
         ],
-        knowledge_file: `${result.entry.category}/${result.entry.file}`
+        knowledge_file: `${result.entry.category}/${result.entry.file}`,
+        agent_notes: output.issue.review_agent_notes || ""
       };
       writePendingReview(review);
       logInfo(AGENT, `Created pending review: ${review.id} - ${review.subject}`);

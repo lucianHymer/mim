@@ -68,7 +68,7 @@ export declare function createBridgeGuardianScene(): TileSpec[][];
  *
  * Layout:
  * Row 0: TREE   TREE   TREE   TREE   TREE   TREE   TREE
- * Row 1: TREE   GRASS  GRASS  GRASS  GRASS  GRASS  (odin)
+ * Row 1: TREE   GRASS  WATER  WATER  WATER  GRASS  (odin)
  * Row 2: (enter) GRASS  WATER  WATER  WATER  GRASS  TREE
  * Row 3: TREE   GRASS  WATER  (mim)  WATER  GRASS  TREE
  * Row 4: TREE   GRASS  GRASS  (dest) GRASS  GRASS  TREE

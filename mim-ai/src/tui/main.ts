@@ -591,6 +591,7 @@ class MimGame {
   private mimSprite: Sprite | null = null;
   private odinSprite: Sprite | null = null;
   private tentacleSprite: Sprite | null = null;
+  private tentacleSprite2: Sprite | null = null;
 
   // Pending review state
   private pendingReviews: PendingReview[] = [];
@@ -1221,11 +1222,25 @@ class MimGame {
 
   /**
    * Update the text input in the modal
-   * With multi-line wrapping, we need to redraw the full modal
+   * Only redraws the modal overlay, not the entire scene
    */
   private updateTextInputLine(): void {
-    // Multi-line text input affects layout, so do a full redraw
-    this.fullDraw();
+    // Only redraw the modal portion, not the full scene
+    if (!this.state.tileset || !this.state.showQuestionModal) {
+      return;
+    }
+
+    const layout = getLayout();
+    const modalBuffer = this.buildQuestionModalBuffer(
+      layout.tileArea.x,
+      layout.tileArea.y,
+      TILE_AREA_WIDTH
+    );
+
+    // Output just the modal buffer
+    process.stdout.cork();
+    process.stdout.write(modalBuffer);
+    process.stdout.uncork();
   }
 
   private async setupWellspringScene(): Promise<void> {
@@ -1273,6 +1288,19 @@ class MimGame {
     registerSprite(this.tentacleSprite);
     // Start flipping animation (mirror effect)
     this.tentacleSprite.startFlipping();
+
+    // Create second tentacle sprite (in the water, flipping like ripples)
+    // Position: row 2, col 4 (two tiles right from first tentacle)
+    this.tentacleSprite2 = new Sprite({
+      id: 'tentacle2',
+      tile: TILE.TENTACLE,
+      position: { row: 2, col: 4 },
+      visible: true,
+      controlled: false,
+    });
+    registerSprite(this.tentacleSprite2);
+    // Start flipping animation (each tentacle uses random timing, so they'll be independent)
+    this.tentacleSprite2.startFlipping();
 
     // Clear screen and draw initial scene FIRST
     term.clear();
@@ -1742,8 +1770,8 @@ class MimGame {
         this.updateTextInputLine();
         return;
       } else if (key.length === 1 && key.charCodeAt(0) >= 32) {
-        // Add printable character (limit to reasonable length)
-        if (this.state.otherInputText.length < 200) {
+        // Add printable character (limit to 2000 chars)
+        if (this.state.otherInputText.length < 2000) {
           this.state.otherInputText += key;
           this.updateTextInputLine();
         }
@@ -1864,7 +1892,7 @@ class MimGame {
 
       // Add printable character
       if (key.length === 1 && key.charCodeAt(0) >= 32) {
-        if (this.state.wellspringInputBuffer.length < 500) {
+        if (this.state.wellspringInputBuffer.length < 2000) {
           this.state.wellspringInputBuffer += key;
           this.state.wellspringCursorPosition++;
           this.draw();
@@ -1971,8 +1999,8 @@ class MimGame {
       this.state.textInputValue = this.state.textInputValue.slice(0, -1);
       this.fullDraw();
     } else if (key.length === 1 && key.charCodeAt(0) >= 32) {
-      // Add printable character (limit to reasonable length)
-      if (this.state.textInputValue.length < 200) {
+      // Add printable character (limit to 2000 chars)
+      if (this.state.textInputValue.length < 2000) {
         this.state.textInputValue += key;
         this.fullDraw();
       }
@@ -3284,26 +3312,68 @@ class MimGame {
     }
     y += 2;
 
-    // Calculate visible area for messages (between header and footer)
+    // Header ends here
     const headerEndY = y;
-    // Footer layout based on mode:
-    // INSERT mode: input lines (multi-line supported) + 1-line status bar
-    // SCROLL mode: 2-line status bar = 2 lines
-    // Done mode: 1-line instruction = 1 line
-    const showInputLine = this.state.wellspringMode === 'INSERT' && !this.state.agentDone;
+
+    // Color constants for status bars
+    const cGreen = '\x1b[1;92m';   // bold bright green
+    const cYellow = '\x1b[1;93m';  // bold bright yellow
+    const cRed = '\x1b[1;91m';     // bold bright red
+    const DIM = '\x1b[38;2;140;140;140m';
+
+    // Get audio status for footer
+    const musicMode = getMusicMode();
+    const sfxOn = isSfxEnabled();
+    const musicColor = musicMode === 'on' ? cGreen : musicMode === 'quiet' ? cYellow : cRed;
+    const musicText = musicMode.toUpperCase();
+    const sfxColor = sfxOn ? cGreen : cRed;
+    const sfxText = sfxOn ? 'ON' : 'OFF';
 
     // Calculate input lines for INSERT mode (handles newlines and word wrap)
     const maxInputWidth = width - 2;
     const inputBuffer = this.state.wellspringInputBuffer;
+    const showInputLine = this.state.wellspringMode === 'INSERT' && !this.state.agentDone;
+
     // For empty buffer, use single empty line so cursor appears on its own line
     const inputLines = showInputLine
       ? (inputBuffer ? this.wrapText(inputBuffer, maxInputWidth) : [''])
       : [];
-    const inputLineCount = showInputLine ? Math.max(1, inputLines.length) : 0;
 
-    const footerLines = this.state.agentDone ? 1 : (showInputLine ? inputLineCount + 1 : 2);
-    const instructionY = layout.chatArea.y + layout.chatArea.height - footerLines;
-    const visibleHeight = instructionY - headerEndY;
+    // Limit visible input lines to prevent filling entire screen
+    const MAX_VISIBLE_INPUT_LINES = 8;
+    const visibleInputLines = inputLines.length > MAX_VISIBLE_INPUT_LINES
+      ? inputLines.slice(inputLines.length - MAX_VISIBLE_INPUT_LINES)
+      : inputLines;
+    const inputLineCount = showInputLine ? Math.max(1, visibleInputLines.length) : 0;
+    const hiddenInputLines = inputLines.length - visibleInputLines.length;
+
+    // === BOTTOM-UP LAYOUT (Arbiter style) ===
+    // Layout from bottom of screen:
+    // - Input line(s) at absolute bottom
+    // - Status bar above input
+    // - Messages fill space between header and status bar
+
+    const bottomY = layout.chatArea.y + layout.chatArea.height - 1;
+
+    // Calculate footer height based on mode
+    let footerHeight: number;
+    if (this.state.agentDone) {
+      footerHeight = 1; // Just exit instruction
+    } else if (showInputLine) {
+      footerHeight = inputLineCount + 1; // Input lines + status bar
+      // Add 1 for hidden lines indicator if present
+      if (hiddenInputLines > 0) {
+        footerHeight++;
+      }
+    } else {
+      footerHeight = 2; // SCROLL mode: two-line status bar
+    }
+
+    // Status bar starts here (above input in INSERT mode, at footer start otherwise)
+    const statusBarY = bottomY - footerHeight + 1;
+
+    // Message area is between header and status bar
+    const visibleHeight = statusBarY - headerEndY;
 
     // Get all rendered chat lines
     const renderedLines = this.getWellspringChatLines(width);
@@ -3313,7 +3383,7 @@ class MimGame {
     const maxScroll = Math.max(0, renderedLines.length - visibleHeight + SCROLL_PADDING);
     this.state.wellspringScrollOffset = Math.min(Math.max(0, this.state.wellspringScrollOffset), maxScroll);
 
-    // Draw visible lines with scroll offset applied
+    // Draw visible message lines with scroll offset applied
     for (let i = 0; i < visibleHeight; i++) {
       const lineIdx = this.state.wellspringScrollOffset + i;
       const lineY = headerEndY + i;
@@ -3325,42 +3395,27 @@ class MimGame {
       }
     }
 
-    // Draw footer based on mode (Arbiter-style status bars)
-    let currentY = instructionY;
-
-    // Color constants for status bars
-    const bgBrown = '\x1b[48;2;139;69;19m';
-    const cGreen = '\x1b[1;92m';   // bold bright green
-    const cYellow = '\x1b[1;93m';  // bold bright yellow
-    const cRed = '\x1b[1;91m';     // bold bright red
-    const DIM = '\x1b[38;2;140;140;140m';
-
-    // Get audio status for second line
-    const musicMode = getMusicMode();
-    const sfxOn = isSfxEnabled();
-    const musicColor = musicMode === 'on' ? cGreen : musicMode === 'quiet' ? cYellow : cRed;
-    const musicText = musicMode.toUpperCase();
-    const sfxColor = sfxOn ? cGreen : cRed;
-    const sfxText = sfxOn ? 'ON' : 'OFF';
-
+    // === DRAW FOOTER FROM BOTTOM UP ===
     if (this.state.agentDone) {
       // Done state - single line with exit instruction and audio controls
-      term.moveTo(x, currentY);
+      term.moveTo(x, bottomY);
       const audioStatus = this.getAudioStatusString();
       process.stdout.write(`${COLORS.green}[ESC] Depart the Wellspring${COLORS.reset}  ${COLORS.dim}·${COLORS.reset}  ${audioStatus}`);
-    } else if (this.state.wellspringMode === 'INSERT') {
-      // INSERT mode - input lines (multi-line supported) with cursor, then single-line green status bar
+    } else if (showInputLine) {
+      // INSERT mode - input at bottom, status bar above
       const cursorChar = '\u2588'; // Block cursor
 
-      // Render each input line, adding cursor to the last line
-      for (let i = 0; i < inputLines.length; i++) {
-        term.moveTo(x, currentY);
-        const line = inputLines[i];
-        const isLastLine = i === inputLines.length - 1;
+      // Draw input lines from bottom up
+      let inputY = bottomY;
+      for (let i = visibleInputLines.length - 1; i >= 0; i--) {
+        term.moveTo(x, inputY);
+        const line = visibleInputLines[i];
+        const isLastLine = i === visibleInputLines.length - 1;
 
         if (isLastLine) {
           // Add cursor at the end of the last line
           const lineWithCursor = line + cursorChar;
+          // Scroll horizontally to keep cursor visible
           const displayLine = lineWithCursor.length > maxInputWidth
             ? lineWithCursor.substring(lineWithCursor.length - maxInputWidth)
             : lineWithCursor;
@@ -3369,24 +3424,31 @@ class MimGame {
           // Non-last lines: just show the text
           process.stdout.write(`${COLORS.white}${line.substring(0, maxInputWidth)}${COLORS.reset}`);
         }
-        currentY++;
+        inputY--;
       }
 
-      // Single-line status bar with green INSERT badge (Arbiter format)
-      term.moveTo(x, currentY);
+      // Show scroll indicator if there are hidden lines above
+      if (hiddenInputLines > 0) {
+        term.moveTo(x, inputY);
+        process.stdout.write(`${DIM}... (${hiddenInputLines} more lines above)${COLORS.reset}`);
+        inputY--;
+      }
+
+      // Status bar above input
+      term.moveTo(x, statusBarY);
       const insertBadge = `\x1b[42;30m INSERT \x1b[0m`;
       const insertHints = `${DIM}esc:scroll  ·  \\+enter:newline  ·  ^C:quit  ·  ^Z:suspend${COLORS.reset}`;
       process.stdout.write(`${insertBadge}    ${insertHints}`);
     } else {
-      // SCROLL mode - two-line brown status bar (Arbiter format)
-      term.moveTo(x, currentY);
+      // SCROLL mode - two-line brown status bar at bottom
+      // First line (top of the two)
+      term.moveTo(x, bottomY - 1);
       const scrollBadge = `\x1b[48;2;139;69;19m\x1b[97m SCROLL \x1b[0m`;
       const scrollHints = `${DIM}i:insert  ·  ↑/↓:scroll  ·  ^C:quit  ·  ^Z:suspend${COLORS.reset}`;
       process.stdout.write(`${scrollBadge}    ${scrollHints}`);
-      currentY++;
 
-      // Second line with audio controls (12 spaces indent to align)
-      term.moveTo(x, currentY);
+      // Second line (bottom) with audio controls
+      term.moveTo(x, bottomY);
       const indent = '            '; // 12 spaces to align with first line after badge
       const audioLine = `${indent}${DIM}o:log  ·  m:music(${musicColor}${musicText}${COLORS.reset}${DIM}/${musicMode === 'quiet' ? cYellow : DIM}quiet${COLORS.reset}${DIM}/${musicMode === 'off' ? cRed : DIM}off${COLORS.reset}${DIM})  ·  s:sfx(${sfxColor}${sfxText}${COLORS.reset}${DIM}/${sfxOn ? DIM : cRed}off${COLORS.reset}${DIM})${COLORS.reset}`;
       process.stdout.write(audioLine);

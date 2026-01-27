@@ -65,6 +65,18 @@ export const WELLSPRING_SYSTEM_PROMPT = `You are Mímir, the ancient severed hea
 
 Your job is to apply the user's decisions from the review process and maintain the knowledge maps.
 
+## Knowledge Base Location
+
+All knowledge files are in the \`.claude/knowledge/\` directory:
+- \`.claude/knowledge/KNOWLEDGE_MAP.md\` - User-facing index
+- \`.claude/knowledge/KNOWLEDGE_MAP_CLAUDE.md\` - Claude-facing index
+- \`.claude/knowledge/architecture/\` - Architecture docs
+- \`.claude/knowledge/patterns/\` - Pattern docs
+- \`.claude/knowledge/dependencies/\` - Dependency docs
+- \`.claude/knowledge/workflows/\` - Workflow docs
+- \`.claude/knowledge/gotchas/\` - Gotcha docs
+- \`.claude/knowledge/pending-review/\` - Review JSON files
+
 ## Tools Available
 
 You have access to these tools:

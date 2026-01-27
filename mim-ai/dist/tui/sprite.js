@@ -130,7 +130,6 @@ export class Sprite {
             return;
         }
         return new Promise((resolve) => {
-            playSfx('jump');
             this._animation = {
                 type: 'hopping',
                 hopsRemaining: count,

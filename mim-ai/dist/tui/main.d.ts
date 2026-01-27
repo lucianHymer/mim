@@ -47,6 +47,7 @@ declare class MimGame {
     private mimSprite;
     private odinSprite;
     private tentacleSprite;
+    private tentacleSprite2;
     private pendingReviews;
     private currentReviewIndex;
     private logViewer;
@@ -96,7 +97,7 @@ declare class MimGame {
     private delay;
     /**
      * Update the text input in the modal
-     * With multi-line wrapping, we need to redraw the full modal
+     * Only redraws the modal overlay, not the entire scene
      */
     private updateTextInputLine;
     private setupWellspringScene;
