@@ -48,12 +48,12 @@ export function createLogViewer(deps: LogViewerDeps): LogViewer {
       ? `(${logLines.length} lines, showing ${scrollOffset + 1}-${Math.min(scrollOffset + visibleLines, logLines.length)})`
       : '(empty)';
     process.stdout.write(`\x1b[42;30m DEBUG LOG \x1b[0m \x1b[2m${lineInfo}\x1b[0m`);
-    term.eraseLine();
+    term.eraseLineAfter();
 
     // Content
     for (let i = 0; i < visibleLines; i++) {
       term.moveTo(1, i + 2);
-      term.eraseLine();
+      term.eraseLineAfter();
       const lineIdx = scrollOffset + i;
       if (lineIdx < logLines.length) {
         const line = logLines[lineIdx].substring(0, width - 1);
@@ -64,7 +64,7 @@ export function createLogViewer(deps: LogViewerDeps): LogViewer {
     // Footer - green background with key hints
     term.moveTo(1, height);
     process.stdout.write(`\x1b[42;30m j/k:line  u/d:half  b/f:page  g/G:top/bottom  q:close  ^C:quit  ^Z:suspend \x1b[0m`);
-    term.eraseLine();
+    term.eraseLineAfter();
   }
 
   function handleKey(key: string): void {

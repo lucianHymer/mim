@@ -164,6 +164,8 @@ interface GameState {
   wellspringInputBuffer: string;
   /** Cursor position within wellspringInputBuffer */
   wellspringCursorPosition: number;
+  /** Queued messages waiting to be sent when agent finishes processing */
+  wellspringMessageQueue: string[];
 
   /** Currently executing tool name, or null if none */
   currentTool: string | null;
@@ -632,6 +634,7 @@ class MimGame {
       wellspringMode: 'INSERT',
       wellspringInputBuffer: '',
       wellspringCursorPosition: 0,
+      wellspringMessageQueue: [],
       currentTool: null,
       recentTools: [],
       toolCountSinceLastMessage: 0,
@@ -1423,6 +1426,12 @@ class MimGame {
               logInfo(AGENT, 'Agent waiting for user input');
               this.state.agentProcessing = false;
               this.draw();
+              // Flush any queued messages
+              if (this.state.wellspringMessageQueue.length > 0) {
+                const queued = this.state.wellspringMessageQueue.join('\n\n');
+                this.state.wellspringMessageQueue = [];
+                this.sendWellspringMessage(queued);
+              }
             }
           }
         } else {
@@ -1551,6 +1560,13 @@ class MimGame {
       // Always reset processing state in finally - either agent is done, or we need to allow retry
       this.state.agentProcessing = false;
       this.draw();
+    }
+
+    // Flush any queued messages after turn completes
+    if (!this.state.agentDone && this.state.wellspringMessageQueue.length > 0) {
+      const queued = this.state.wellspringMessageQueue.join('\n\n');
+      this.state.wellspringMessageQueue = [];
+      this.sendWellspringMessage(queued);
     }
 
     logInfo(AGENT, 'Wellspring message turn completed');
@@ -1871,12 +1887,20 @@ class MimGame {
           return;
         }
 
-        // Send message if buffer has content and not processing
-        if (this.state.wellspringInputBuffer.trim().length > 0 && !this.state.agentProcessing) {
+        // Send message if buffer has content
+        if (this.state.wellspringInputBuffer.trim().length > 0) {
           const message = this.state.wellspringInputBuffer.trim();
           this.state.wellspringInputBuffer = '';
           this.state.wellspringCursorPosition = 0;
-          this.sendWellspringMessage(message);
+          if (this.state.agentProcessing) {
+            // Queue message - append to existing queue
+            this.state.wellspringMessageQueue.push(message);
+            // Show the message in chat immediately so user sees it
+            this.addMessage('user', message);
+            this.draw();
+          } else {
+            this.sendWellspringMessage(message);
+          }
         }
         return;
       }
@@ -2923,8 +2947,9 @@ class MimGame {
       }
     } else if (this.state.guardianAnswered) {
       textLines.push('');
-      textLines.push(`${COLORS.yellow}"The Wellspring is pure.${RESET}`);
-      textLines.push(`${COLORS.yellow}You may pass."${RESET}`);
+      textLines.push(`${COLORS.yellow}"All questions are answered.${RESET}`);
+      textLines.push(`${COLORS.yellow}Pass, wanderer.${RESET}`);
+      textLines.push(`${COLORS.yellow}Your words are carved into \x1b[3maskr Yggdrasils\x1b[23m, the World Tree."${RESET}`);
       textLines.push('');
       textLines.push(`${COLORS.dim}Press ENTER to continue...${RESET}`);
     } else {
@@ -3249,10 +3274,10 @@ class MimGame {
         // Add blank line between messages
         renderedLines.push({ text: '', color: COLORS.reset });
       }
-    } else if (!this.state.agentDone && !this.state.agentProcessing) {
-      // Animated processing indicator when waiting to start
+    } else if (!this.state.agentDone && this.state.agentProcessing && this.state.messages.length === 0) {
+      // Show working indicator when agent is processing but hasn't sent any messages yet
       const dots = '.'.repeat((this.state.blinkCycle % 4) + 1);
-      renderedLines.push({ text: `Processing${dots}`, color: COLORS.dim });
+      renderedLines.push({ text: `Mímir is working${dots}`, color: COLORS.dim });
     }
 
     // Add tool indicator if active
@@ -3266,7 +3291,6 @@ class MimGame {
         ? '(1 tool)'
         : `(${this.state.toolCountSinceLastMessage} tools)`;
 
-      renderedLines.push({ text: '', color: COLORS.dim }); // blank line
       renderedLines.push({
         text: `${pulse} ${toolsText} ${countText} ${pulse}`,
         color: COLORS.dim

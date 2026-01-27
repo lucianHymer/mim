@@ -156,7 +156,7 @@ async function checkStatus() {
   const pendingDir = path.join(process.cwd(), PENDING_DIR);
 
   if (!fs.existsSync(pendingDir)) {
-    console.log('The Wellspring is pure.');
+    console.log('All questions are answered.\nPass, wanderer.\nYour words are carved into \x1b[3maskr Yggdrasils\x1b[23m, the World Tree.');
     return;
   }
 
@@ -176,10 +176,10 @@ async function checkStatus() {
     if (unansweredCount > 0) {
       console.log(`Pending reviews found (${unansweredCount}). Run 'mim review' to begin.`);
     } else {
-      console.log('The Wellspring is pure.');
+      console.log('All questions are answered.\nPass, wanderer.\nYour words are carved into \x1b[3maskr Yggdrasils\x1b[23m, the World Tree.');
     }
   } catch (err) {
-    console.log('The Wellspring is pure.');
+    console.log('All questions are answered.\nPass, wanderer.\nYour words are carved into \x1b[3maskr Yggdrasils\x1b[23m, the World Tree.');
   }
 }
 
@@ -348,7 +348,7 @@ Commands:
   init          Initialize knowledge directory structure
   help          Show this help message
 
-The wellspring is ready.
+The Wellspring awaits.
 `);
 }
 
