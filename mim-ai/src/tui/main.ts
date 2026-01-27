@@ -1420,7 +1420,7 @@ class MimGame {
                 }
               }
 
-              this.addMessage('mimir', 'It is done. The waters are still. Press ESC to depart.');
+              this.addMessage('mimir', 'It is done. The waters are still. Speak, and Mímir will listen — or Ctrl+C to depart.');
             } else {
               // done=false: Agent is waiting for user input
               logInfo(AGENT, 'Agent waiting for user input');
@@ -1522,8 +1522,9 @@ class MimGame {
     }
 
     if (this.state.agentDone) {
-      logWarn(AGENT, 'Cannot send message: agent is done');
-      return;
+      // Allow continued conversation after agent finishes work
+      logInfo(AGENT, 'Resuming conversation after agent done');
+      this.state.agentDone = false;
     }
 
     // Show user message in chat
@@ -1931,21 +1932,13 @@ class MimGame {
     if (this.state.wellspringMode === 'SCROLL') {
       switch (key) {
         case 'i':
-          // Switch to INSERT mode (only if agent not done)
-          if (!this.state.agentDone) {
-            this.state.wellspringMode = 'INSERT';
-            this.draw();
-          }
+          // Switch to INSERT mode
+          this.state.wellspringMode = 'INSERT';
+          this.draw();
           return;
 
         case 'ESCAPE':
-          // Exit only when agent is done
-          if (this.state.agentDone) {
-            if (this.callbacks.onComplete) {
-              this.callbacks.onComplete();
-            }
-            this.stop();
-          }
+          // ESC does nothing in SCROLL mode - use Ctrl+C to exit
           return;
 
         case 'j':
@@ -3356,7 +3349,7 @@ class MimGame {
     // Calculate input lines for INSERT mode (handles newlines and word wrap)
     const maxInputWidth = width - 2;
     const inputBuffer = this.state.wellspringInputBuffer;
-    const showInputLine = this.state.wellspringMode === 'INSERT' && !this.state.agentDone;
+    const showInputLine = this.state.wellspringMode === 'INSERT';
 
     // For empty buffer, use single empty line so cursor appears on its own line
     const inputLines = showInputLine
@@ -3381,9 +3374,7 @@ class MimGame {
 
     // Calculate footer height based on mode
     let footerHeight: number;
-    if (this.state.agentDone) {
-      footerHeight = 1; // Just exit instruction
-    } else if (showInputLine) {
+    if (showInputLine) {
       footerHeight = inputLineCount + 1; // Input lines + status bar
       // Add 1 for hidden lines indicator if present
       if (hiddenInputLines > 0) {
@@ -3420,12 +3411,7 @@ class MimGame {
     }
 
     // === DRAW FOOTER FROM BOTTOM UP ===
-    if (this.state.agentDone) {
-      // Done state - single line with exit instruction and audio controls
-      term.moveTo(x, bottomY);
-      const audioStatus = this.getAudioStatusString();
-      process.stdout.write(`${COLORS.green}[ESC] Depart the Wellspring${COLORS.reset}  ${COLORS.dim}·${COLORS.reset}  ${audioStatus}`);
-    } else if (showInputLine) {
+    if (showInputLine) {
       // INSERT mode - input at bottom, status bar above
       const cursorChar = '\u2588'; // Block cursor
 
