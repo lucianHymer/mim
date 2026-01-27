@@ -21940,15 +21940,13 @@ import path2 from "node:path";
 var ReviewEntrySchema = external_exports.object({
   id: external_exports.string(),
   subject: external_exports.string(),
-  type: external_exports.enum(["stale", "conflict", "outdated", "auto_fix"]),
+  type: external_exports.enum(["stale", "conflict", "outdated"]),
   question: external_exports.string(),
   options: external_exports.array(external_exports.string()),
   knowledge_file: external_exports.string(),
   agent_notes: external_exports.string().optional(),
   context: external_exports.string().optional(),
   // Additional context for the reviewer
-  auto_apply: external_exports.boolean().optional(),
-  // If true, Wellspring applies without user interaction
   answer: external_exports.string().optional()
   // User's answer once reviewed
 });
@@ -21962,6 +21960,27 @@ var PENDING_DIR = `${KNOWLEDGE_DIR}/pending-review`;
 var LAST_ANALYSIS_FILE = `${KNOWLEDGE_DIR}/.last-analysis`;
 function writeLastAnalysis(state) {
   fs3.writeFileSync(path2.join(process.cwd(), LAST_ANALYSIS_FILE), JSON.stringify(state, null, 2));
+}
+var ENTRY_STATUS_FILE = `${KNOWLEDGE_DIR}/.entry-status.json`;
+function readEntryManifest() {
+  try {
+    const content = fs3.readFileSync(path2.join(process.cwd(), ENTRY_STATUS_FILE), "utf-8");
+    return JSON.parse(content);
+  } catch {
+    return {};
+  }
+}
+function writeEntryManifest(manifest) {
+  fs3.writeFileSync(path2.join(process.cwd(), ENTRY_STATUS_FILE), JSON.stringify(manifest, null, 2));
+}
+function updateEntryStatus(entryId, status, commitHash) {
+  const manifest = readEntryManifest();
+  manifest[entryId] = {
+    status,
+    checkedAt: (/* @__PURE__ */ new Date()).toISOString(),
+    commitHash
+  };
+  writeEntryManifest(manifest);
 }
 function writePendingReview(review) {
   const filename = `${review.id}.json`;
@@ -22111,7 +22130,6 @@ function parseKnowledgeEntries(category, filename, content) {
 import fs4 from "node:fs";
 import path3 from "node:path";
 import { execSync } from "node:child_process";
-process.setMaxListeners(20);
 var AGENT = AGENTS.CHANGES_REVIEWER;
 function findClaudeExecutable() {
   if (process.env.CLAUDE_BINARY) {
@@ -22147,7 +22165,9 @@ var CATEGORIES = [
   "gotchas"
 ];
 var LOCK_FILE = path3.join(KNOWLEDGE_DIR2, ".analysis-lock");
-var MAX_CONCURRENT_INQUISITORS = 5;
+var DELAY_BETWEEN_INQUISITORS_MS = 5e3;
+var MANIFEST_THROTTLE_MS = 60 * 60 * 1e3;
+var MANIFEST_RECHECK_MS = 24 * 60 * 60 * 1e3;
 function processExists(pid) {
   try {
     process.kill(pid, 0);
@@ -22361,37 +22381,94 @@ Verify this knowledge against the actual codebase. Check if the referenced code 
     return { entry, error: message, success: false };
   }
 }
-function processInquisitorResult(result) {
+async function applyAutoFix(entry, suggestedFix, knowledgeFile) {
+  const prompt = `Apply this fix to the knowledge file:
+
+**Knowledge File:** .claude/knowledge/${knowledgeFile}
+**Entry:** ${entry.topic} (${entry.id})
+
+**Fix to apply:**
+${suggestedFix}
+
+Read the knowledge file, apply the fix described above, and save the file.
+Be precise and minimal - only change what the fix describes.`;
+  try {
+    const session = query({
+      prompt,
+      options: {
+        model: "haiku",
+        pathToClaudeCodeExecutable: CLAUDE_EXECUTABLE,
+        systemPrompt: "You are applying a small fix to a knowledge file. Be precise and minimal. Only change what is described in the fix.",
+        canUseTool: async (tool, input) => {
+          const allowedTools = ["Read", "Edit", "Glob", "Grep"];
+          if (allowedTools.includes(tool)) {
+            return { behavior: "allow", updatedInput: input };
+          }
+          return { behavior: "deny", message: "Tool not allowed" };
+        }
+      }
+    });
+    for await (const event of session) {
+      if (event.type === "result" && event.subtype === "success") {
+        return true;
+      } else if (event.type === "result") {
+        logWarn(AGENT, `Auto-fix agent failed for ${entry.id}: ${event.subtype}`);
+        return false;
+      }
+    }
+    return false;
+  } catch (error2) {
+    const message = error2 instanceof Error ? error2.message : String(error2);
+    logWarn(AGENT, `Auto-fix agent error for ${entry.id}: ${message}`);
+    return false;
+  }
+}
+async function processInquisitorResult(result, currentHead) {
   if (!result.success) {
     logWarn(AGENT, `Inquisitor failed for ${result.entry.id}: ${result.error}`);
-    return { autoFix: null, review: null };
+    return { autoFixed: false, review: null };
   }
   const output = result.output;
   if (!output)
-    return { autoFix: null, review: null };
+    return { autoFixed: false, review: null };
   if (output.status === "valid") {
     logInfo(AGENT, `Entry ${output.entry_id} is valid`);
-    return { autoFix: null, review: null };
+    updateEntryStatus(result.entry.id, "ok", currentHead);
+    return { autoFixed: false, review: null };
   }
   if (output.issue) {
     if (output.issue.severity === "auto_fix" && output.issue.suggested_fix) {
+      const knowledgeFile = `${result.entry.category}/${result.entry.file}`;
+      logInfo(AGENT, `Applying auto-fix for ${result.entry.id}...`);
+      const success = await applyAutoFix(result.entry, output.issue.suggested_fix, knowledgeFile);
+      if (success) {
+        updateEntryStatus(result.entry.id, "auto_fixed", currentHead);
+        logInfo(AGENT, `Auto-fix applied: ${result.entry.id}`);
+        return { autoFixed: true, review: null };
+      }
+      logWarn(AGENT, `Auto-fix failed for ${result.entry.id}, creating review instead`);
       const review = {
         id: result.entry.id,
-        subject: `${result.entry.topic} - auto-fix`,
-        type: "auto_fix",
+        subject: `${result.entry.topic} - ${output.status}`,
+        type: output.status,
         question: output.issue.description,
-        // Describes what's being fixed
-        options: [],
-        // No options for autofixes - one clear fix
-        knowledge_file: `${result.entry.category}/${result.entry.file}`,
-        agent_notes: output.issue.suggested_fix,
-        // The fix to apply
-        auto_apply: true
-        // Flag for Wellspring to apply without user interaction
+        context: `Category: ${result.entry.category}
+File: ${result.entry.file}
+
+Findings: ${output.findings.current_behavior}
+
+Auto-fix was attempted but failed. Suggested fix: ${output.issue.suggested_fix}`,
+        options: [
+          "Apply the suggested fix manually",
+          "Update to match code",
+          "Remove this entry"
+        ],
+        knowledge_file: knowledgeFile,
+        agent_notes: output.issue.suggested_fix
       };
       writePendingReview(review);
-      logInfo(AGENT, `Created auto-fix review: ${review.id} - ${review.subject}`);
-      return { autoFix: true, review };
+      updateEntryStatus(result.entry.id, "review_pending", currentHead);
+      return { autoFixed: false, review };
     } else if (output.issue.severity === "needs_review") {
       const review = {
         id: result.entry.id,
@@ -22413,43 +22490,61 @@ Location recommendation: ${output.location_context.scope} - ${output.location_co
         agent_notes: output.issue.review_agent_notes || ""
       };
       writePendingReview(review);
+      updateEntryStatus(result.entry.id, "review_pending", currentHead);
       logInfo(AGENT, `Created pending review: ${review.id} - ${review.subject}`);
-      return { autoFix: null, review };
+      return { autoFixed: false, review };
     }
   }
-  return { autoFix: null, review: null };
+  return { autoFixed: false, review: null };
 }
-async function runInquisitorSwarm(entries) {
+function shouldSkipEntry(entryId, manifest, currentHead) {
+  const entry = manifest[entryId];
+  if (!entry)
+    return false;
+  const checkedAt = new Date(entry.checkedAt).getTime();
+  const now = Date.now();
+  const age = now - checkedAt;
+  if (entry.commitHash === currentHead) {
+    return age < MANIFEST_RECHECK_MS;
+  }
+  return age < MANIFEST_THROTTLE_MS;
+}
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+async function runInquisitorSwarm(entries, currentHead) {
+  const manifest = readEntryManifest();
   const entriesToProcess = entries.filter((entry) => {
     if (pendingReviewExists(entry.id)) {
       logInfo(AGENT, `Skipping ${entry.id} - pending review already exists`);
       return false;
     }
+    if (shouldSkipEntry(entry.id, manifest, currentHead)) {
+      logInfo(AGENT, `Skipping ${entry.id} - recently checked (manifest throttle)`);
+      return false;
+    }
     return true;
   });
   if (entriesToProcess.length < entries.length) {
-    logInfo(AGENT, `Filtered ${entries.length - entriesToProcess.length} entries with existing reviews`);
+    logInfo(AGENT, `Filtered ${entries.length - entriesToProcess.length} entries (pending reviews or manifest throttle)`);
   }
   const stats = { successful: 0, failed: 0, autoFixes: 0, reviews: 0 };
-  const pending = [...entriesToProcess];
-  while (pending.length > 0) {
-    const batch = pending.splice(0, MAX_CONCURRENT_INQUISITORS);
-    logInfo(AGENT, `Launching ${batch.length} inquisitors (${pending.length} remaining)`);
-    const batchPromises = batch.map(async (entry) => {
-      const result = await runInquisitor(entry);
-      const { autoFix, review } = processInquisitorResult(result);
-      return { success: result.success, autoFix, review };
-    });
-    const batchResults = await Promise.all(batchPromises);
-    for (const result of batchResults) {
-      if (result.success)
-        stats.successful++;
-      else
-        stats.failed++;
-      if (result.autoFix)
-        stats.autoFixes++;
-      if (result.review)
-        stats.reviews++;
+  for (let i = 0; i < entriesToProcess.length; i++) {
+    const entry = entriesToProcess[i];
+    logInfo(AGENT, `Processing entry ${i + 1}/${entriesToProcess.length}: ${entry.id}`);
+    const result = await runInquisitor(entry);
+    const { autoFixed, review } = await processInquisitorResult(result, currentHead);
+    if (result.success)
+      stats.successful++;
+    else
+      stats.failed++;
+    if (autoFixed)
+      stats.autoFixes++;
+    if (review)
+      stats.reviews++;
+    if (i < entriesToProcess.length - 1) {
+      logInfo(AGENT, `Waiting ${DELAY_BETWEEN_INQUISITORS_MS / 1e3}s before next entry...`);
+      await sleep(DELAY_BETWEEN_INQUISITORS_MS);
     }
   }
   return stats;
@@ -22492,7 +22587,7 @@ async function main() {
         return;
       }
       logInfo(AGENT, `Found ${entries.length} knowledge entries to investigate`);
-      const stats = await runInquisitorSwarm(entries);
+      const stats = await runInquisitorSwarm(entries, currentHead);
       logInfo(AGENT, `Inquisitor swarm complete: ${stats.successful}/${stats.successful + stats.failed} successful`);
       logInfo(AGENT, `Analysis complete: ${stats.autoFixes} auto-fixes, ${stats.reviews} new reviews`);
       writeLastAnalysis({

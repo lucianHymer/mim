@@ -70,13 +70,12 @@ import { createLogViewer, LogViewer } from './logViewer.js';
 interface PendingReview {
   id: string;
   subject: string;
-  type: 'stale' | 'conflict' | 'outdated' | 'auto_fix';
+  type: 'stale' | 'conflict' | 'outdated';
   question: string;
   options: string[];
   knowledge_file: string;
   agent_notes: string;  // Technical details for the agent applying the decision (not shown to user)
   answer?: string;
-  auto_apply?: boolean;  // If true, Wellspring applies without user interaction
 }
 
 const PENDING_REVIEW_DIR = '.claude/knowledge/pending-review';
@@ -1029,8 +1028,7 @@ class MimGame {
         const content = fs.readFileSync(path.join(dir, file), 'utf-8');
         const review = JSON.parse(content) as PendingReview;
         // Only load unanswered reviews that need user interaction
-        // Skip auto_apply reviews - Wellspring handles those automatically
-        if (!review.answer && !review.auto_apply) {
+        if (!review.answer) {
           this.pendingReviews.push(review);
         }
       }

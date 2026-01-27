@@ -725,8 +725,7 @@ class MimGame {
                 const content = fs.readFileSync(path.join(dir, file), 'utf-8');
                 const review = JSON.parse(content);
                 // Only load unanswered reviews that need user interaction
-                // Skip auto_apply reviews - Wellspring handles those automatically
-                if (!review.answer && !review.auto_apply) {
+                if (!review.answer) {
                     this.pendingReviews.push(review);
                 }
             }

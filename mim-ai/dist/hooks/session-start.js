@@ -10,7 +10,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
 const KNOWLEDGE_DIR = ".claude/knowledge";
-const LAST_ANALYSIS_FILE = path.join(KNOWLEDGE_DIR, ".last-analysis");
 const PENDING_DIR = path.join(KNOWLEDGE_DIR, "pending-review");
 function runMimInit() {
     try {
@@ -47,16 +46,6 @@ function spawnBackgroundAnalysis() {
 function getCurrentHead() {
     try {
         return execSync("git rev-parse HEAD", { encoding: "utf-8" }).trim();
-    }
-    catch {
-        return null;
-    }
-}
-function readLastAnalysis() {
-    try {
-        const filepath = path.join(process.cwd(), LAST_ANALYSIS_FILE);
-        const content = fs.readFileSync(filepath, "utf-8");
-        return JSON.parse(content);
     }
     catch {
         return null;
@@ -103,34 +92,16 @@ async function main() {
     }
     // Ensure knowledge structure exists (idempotent)
     runMimInit();
-    const lastAnalysis = readLastAnalysis();
     const pendingCount = countPendingReviews();
     const messages = [];
-    // Check if analysis is needed
-    if (lastAnalysis && lastAnalysis.commit_hash === currentHead) {
-        // Already analyzed this commit
-        if (pendingCount > 0) {
-            messages.push(`🗣️ ${pendingCount} pending review${pendingCount > 1 ? "s" : ""} await your decision.`);
-            messages.push('   Run "mim review" to begin.');
-        }
-        outputResult(messages.length > 0 ? messages.join("\n") : null);
-        return;
-    }
-    // HEAD has changed - spawn background analysis
-    if (lastAnalysis) {
-        messages.push("📜 The codebase has changed since last analysis.");
-        messages.push("   Mím is analyzing in the background...");
-    }
-    else {
-        // First time - also spawn analysis
-        messages.push("📜 First time seeing this codebase.");
-        messages.push("   Mím is analyzing in the background...");
-    }
+    // Always spawn background analysis - the lock in run-analysis.ts prevents concurrent runs,
+    // and the per-entry manifest handles throttling individual entries
+    messages.push("📜 Mím is analyzing in the background...");
     spawnBackgroundAnalysis();
     if (pendingCount > 0) {
         messages.push("");
         messages.push(`🗣️ ${pendingCount} pending review${pendingCount > 1 ? "s" : ""} await your decision.`);
-        messages.push('   Run "mim review" to begin.');
+        messages.push('   Exit and run "npx mim review" to begin.');
     }
     outputResult(messages.join("\n"));
 }

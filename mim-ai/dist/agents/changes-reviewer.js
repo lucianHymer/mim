@@ -5,13 +5,12 @@ import path from 'node:path';
 export const ReviewEntrySchema = z.object({
     id: z.string(),
     subject: z.string(),
-    type: z.enum(['stale', 'conflict', 'outdated', 'auto_fix']),
+    type: z.enum(['stale', 'conflict', 'outdated']),
     question: z.string(),
     options: z.array(z.string()),
     knowledge_file: z.string(),
     agent_notes: z.string().optional(),
     context: z.string().optional(), // Additional context for the reviewer
-    auto_apply: z.boolean().optional(), // If true, Wellspring applies without user interaction
     answer: z.string().optional(), // User's answer once reviewed
 });
 export const ChangesReviewerOutputSchema = z.object({
@@ -34,11 +33,28 @@ export function readLastAnalysis() {
 export function writeLastAnalysis(state) {
     fs.writeFileSync(path.join(process.cwd(), LAST_ANALYSIS_FILE), JSON.stringify(state, null, 2));
 }
-export function shouldRunAnalysis(currentHash) {
-    const last = readLastAnalysis();
-    if (!last)
-        return true;
-    return last.commit_hash !== currentHash;
+// Entry manifest types and functions for per-entry tracking
+const ENTRY_STATUS_FILE = `${KNOWLEDGE_DIR}/.entry-status.json`;
+export function readEntryManifest() {
+    try {
+        const content = fs.readFileSync(path.join(process.cwd(), ENTRY_STATUS_FILE), 'utf-8');
+        return JSON.parse(content);
+    }
+    catch {
+        return {};
+    }
+}
+export function writeEntryManifest(manifest) {
+    fs.writeFileSync(path.join(process.cwd(), ENTRY_STATUS_FILE), JSON.stringify(manifest, null, 2));
+}
+export function updateEntryStatus(entryId, status, commitHash) {
+    const manifest = readEntryManifest();
+    manifest[entryId] = {
+        status,
+        checkedAt: new Date().toISOString(),
+        commitHash,
+    };
+    writeEntryManifest(manifest);
 }
 // Agent system prompt
 export const CHANGES_REVIEWER_SYSTEM_PROMPT = `You are the On-Changes Reviewer for Mim, a persistent memory system.

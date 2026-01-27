@@ -10,7 +10,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
 var KNOWLEDGE_DIR = ".claude/knowledge";
-var LAST_ANALYSIS_FILE = path.join(KNOWLEDGE_DIR, ".last-analysis");
 var PENDING_DIR = path.join(KNOWLEDGE_DIR, "pending-review");
 function runMimInit() {
   try {
@@ -39,15 +38,6 @@ function spawnBackgroundAnalysis() {
 function getCurrentHead() {
   try {
     return execSync("git rev-parse HEAD", { encoding: "utf-8" }).trim();
-  } catch {
-    return null;
-  }
-}
-function readLastAnalysis() {
-  try {
-    const filepath = path.join(process.cwd(), LAST_ANALYSIS_FILE);
-    const content = fs.readFileSync(filepath, "utf-8");
-    return JSON.parse(content);
   } catch {
     return null;
   }
@@ -86,29 +76,14 @@ async function main() {
     return;
   }
   runMimInit();
-  const lastAnalysis = readLastAnalysis();
   const pendingCount = countPendingReviews();
   const messages = [];
-  if (lastAnalysis && lastAnalysis.commit_hash === currentHead) {
-    if (pendingCount > 0) {
-      messages.push(`\u{1F5E3}\uFE0F ${pendingCount} pending review${pendingCount > 1 ? "s" : ""} await your decision.`);
-      messages.push('   Run "mim review" to begin.');
-    }
-    outputResult(messages.length > 0 ? messages.join("\n") : null);
-    return;
-  }
-  if (lastAnalysis) {
-    messages.push("\u{1F4DC} The codebase has changed since last analysis.");
-    messages.push("   M\xEDm is analyzing in the background...");
-  } else {
-    messages.push("\u{1F4DC} First time seeing this codebase.");
-    messages.push("   M\xEDm is analyzing in the background...");
-  }
+  messages.push("\u{1F4DC} M\xEDm is analyzing in the background...");
   spawnBackgroundAnalysis();
   if (pendingCount > 0) {
     messages.push("");
     messages.push(`\u{1F5E3}\uFE0F ${pendingCount} pending review${pendingCount > 1 ? "s" : ""} await your decision.`);
-    messages.push('   Run "mim review" to begin.');
+    messages.push('   Exit and run "npx mim review" to begin.');
   }
   outputResult(messages.join("\n"));
 }

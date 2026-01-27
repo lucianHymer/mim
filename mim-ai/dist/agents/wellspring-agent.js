@@ -17,8 +17,8 @@ export function loadAnsweredReviews() {
         try {
             const content = fs.readFileSync(path.join(dir, file), 'utf-8');
             const review = JSON.parse(content);
-            // Load reviews that are either answered by user OR marked for auto-apply
-            if (review.answer || review.auto_apply) {
+            // Load reviews that have been answered by user
+            if (review.answer) {
                 review._filename = file; // Track actual filename for deletion
                 reviews.push(review);
             }
@@ -88,25 +88,16 @@ Both maps have identical structure, just different link formats.
 
 ## Input
 
-You will receive review entries. There are two types:
-
-### Regular Reviews (need user answer)
+You will receive review entries with user answers:
 - question: What was asked
 - answer: The user's chosen response
 - knowledge_file: The file that needs updating
 - type: 'stale', 'conflict', or 'outdated'
 - agent_notes: Technical details about what to change
 
-### Auto-Fix Reviews (no user interaction needed)
-- auto_apply: true (this flag indicates automatic processing)
-- question: Describes what's being fixed
-- knowledge_file: The file that needs updating
-- type: 'auto_fix'
-- agent_notes: The specific fix to apply (use this directly)
-
 ## Actions
 
-### For regular reviews (has answer field):
+For each review:
 1. Read the current knowledge file
 2. Apply the user's decision:
    - If answer indicates deletion: Remove the problematic section
@@ -114,12 +105,6 @@ You will receive review entries. There are two types:
    - If answer indicates keeping current: Leave as-is
 3. Update both knowledge maps if content changed
 4. Report what you did
-
-### For auto-fix reviews (has auto_apply: true):
-1. Read the current knowledge file
-2. Apply the fix described in agent_notes directly (no user decision needed)
-3. Update both knowledge maps if content changed
-4. Report what you fixed
 
 **UPDATE BOTH KNOWLEDGE MAPS** if content was deleted or topics changed:
 - Remove entries from KNOWLEDGE_MAP.md if content was deleted
