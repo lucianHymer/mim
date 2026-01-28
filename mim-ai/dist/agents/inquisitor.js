@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 /**
  * Inquisitor Agent - Researches a single knowledge entry
  *
@@ -109,7 +108,7 @@ function stripSchemaField(schema) {
     return rest;
 }
 export function getInquisitorOutputJsonSchema() {
-    return stripSchemaField(zodToJsonSchema(InquisitorOutputSchema));
+    return stripSchemaField(z.toJSONSchema(InquisitorOutputSchema));
 }
 /**
  * Parse knowledge files into individual entries for investigation

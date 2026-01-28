@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -180,5 +179,5 @@ function stripSchemaField(schema: Record<string, unknown>): Record<string, unkno
 }
 
 export function getWellspringOutputJsonSchema(): Record<string, unknown> {
-  return stripSchemaField(zodToJsonSchema(WellspringOutputSchema) as Record<string, unknown>);
+  return stripSchemaField(z.toJSONSchema(WellspringOutputSchema) as Record<string, unknown>);
 }

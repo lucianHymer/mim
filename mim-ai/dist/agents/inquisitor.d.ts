@@ -7,106 +7,40 @@ import { z } from 'zod';
  */
 export declare const InquisitorOutputSchema: z.ZodObject<{
     entry_id: z.ZodString;
-    status: z.ZodEnum<["valid", "stale", "conflict", "outdated"]>;
+    status: z.ZodEnum<{
+        stale: "stale";
+        conflict: "conflict";
+        outdated: "outdated";
+        valid: "valid";
+    }>;
     findings: z.ZodObject<{
         code_exists: z.ZodBoolean;
         current_behavior: z.ZodString;
         recent_changes: z.ZodOptional<z.ZodString>;
-        related_entries: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
-    }, "strip", z.ZodTypeAny, {
-        code_exists: boolean;
-        current_behavior: string;
-        recent_changes?: string | undefined;
-        related_entries?: string[] | undefined;
-    }, {
-        code_exists: boolean;
-        current_behavior: string;
-        recent_changes?: string | undefined;
-        related_entries?: string[] | undefined;
-    }>;
+        related_entries: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    }, z.core.$strip>;
     location_context: z.ZodObject<{
-        scope: z.ZodEnum<["global", "local", "code_comment"]>;
+        scope: z.ZodEnum<{
+            global: "global";
+            local: "local";
+            code_comment: "code_comment";
+        }>;
         reason: z.ZodString;
         suggested_location: z.ZodOptional<z.ZodString>;
-    }, "strip", z.ZodTypeAny, {
-        scope: "global" | "local" | "code_comment";
-        reason: string;
-        suggested_location?: string | undefined;
-    }, {
-        scope: "global" | "local" | "code_comment";
-        reason: string;
-        suggested_location?: string | undefined;
-    }>;
+    }, z.core.$strip>;
     issue: z.ZodOptional<z.ZodObject<{
         description: z.ZodString;
-        severity: z.ZodEnum<["auto_fix", "needs_review"]>;
+        severity: z.ZodEnum<{
+            auto_fix: "auto_fix";
+            needs_review: "needs_review";
+        }>;
         suggested_fix: z.ZodOptional<z.ZodString>;
         review_question: z.ZodOptional<z.ZodString>;
-        review_options: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+        review_options: z.ZodOptional<z.ZodArray<z.ZodString>>;
         review_agent_notes: z.ZodOptional<z.ZodString>;
-    }, "strip", z.ZodTypeAny, {
-        description: string;
-        severity: "auto_fix" | "needs_review";
-        suggested_fix?: string | undefined;
-        review_question?: string | undefined;
-        review_options?: string[] | undefined;
-        review_agent_notes?: string | undefined;
-    }, {
-        description: string;
-        severity: "auto_fix" | "needs_review";
-        suggested_fix?: string | undefined;
-        review_question?: string | undefined;
-        review_options?: string[] | undefined;
-        review_agent_notes?: string | undefined;
-    }>>;
+    }, z.core.$strip>>;
     done: z.ZodBoolean;
-}, "strip", z.ZodTypeAny, {
-    done: boolean;
-    status: "valid" | "stale" | "conflict" | "outdated";
-    entry_id: string;
-    findings: {
-        code_exists: boolean;
-        current_behavior: string;
-        recent_changes?: string | undefined;
-        related_entries?: string[] | undefined;
-    };
-    location_context: {
-        scope: "global" | "local" | "code_comment";
-        reason: string;
-        suggested_location?: string | undefined;
-    };
-    issue?: {
-        description: string;
-        severity: "auto_fix" | "needs_review";
-        suggested_fix?: string | undefined;
-        review_question?: string | undefined;
-        review_options?: string[] | undefined;
-        review_agent_notes?: string | undefined;
-    } | undefined;
-}, {
-    done: boolean;
-    status: "valid" | "stale" | "conflict" | "outdated";
-    entry_id: string;
-    findings: {
-        code_exists: boolean;
-        current_behavior: string;
-        recent_changes?: string | undefined;
-        related_entries?: string[] | undefined;
-    };
-    location_context: {
-        scope: "global" | "local" | "code_comment";
-        reason: string;
-        suggested_location?: string | undefined;
-    };
-    issue?: {
-        description: string;
-        severity: "auto_fix" | "needs_review";
-        suggested_fix?: string | undefined;
-        review_question?: string | undefined;
-        review_options?: string[] | undefined;
-        review_agent_notes?: string | undefined;
-    } | undefined;
-}>;
+}, z.core.$strip>;
 export type InquisitorOutput = z.infer<typeof InquisitorOutputSchema>;
 export interface KnowledgeEntry {
     id: string;

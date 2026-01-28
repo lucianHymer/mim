@@ -2,113 +2,41 @@ import { z } from 'zod';
 export declare const ReviewEntrySchema: z.ZodObject<{
     id: z.ZodString;
     subject: z.ZodString;
-    type: z.ZodEnum<["stale", "conflict", "outdated"]>;
+    type: z.ZodEnum<{
+        stale: "stale";
+        conflict: "conflict";
+        outdated: "outdated";
+    }>;
     question: z.ZodString;
-    options: z.ZodArray<z.ZodString, "many">;
+    options: z.ZodArray<z.ZodString>;
     knowledge_file: z.ZodString;
     agent_notes: z.ZodOptional<z.ZodString>;
     context: z.ZodOptional<z.ZodString>;
     answer: z.ZodOptional<z.ZodString>;
     created_at: z.ZodOptional<z.ZodString>;
     created_at_commit: z.ZodOptional<z.ZodString>;
-}, "strip", z.ZodTypeAny, {
-    options: string[];
-    type: "stale" | "conflict" | "outdated";
-    subject: string;
-    id: string;
-    question: string;
-    knowledge_file: string;
-    agent_notes?: string | undefined;
-    context?: string | undefined;
-    answer?: string | undefined;
-    created_at?: string | undefined;
-    created_at_commit?: string | undefined;
-}, {
-    options: string[];
-    type: "stale" | "conflict" | "outdated";
-    subject: string;
-    id: string;
-    question: string;
-    knowledge_file: string;
-    agent_notes?: string | undefined;
-    context?: string | undefined;
-    answer?: string | undefined;
-    created_at?: string | undefined;
-    created_at_commit?: string | undefined;
-}>;
+}, z.core.$strip>;
 export declare const ChangesReviewerOutputSchema: z.ZodObject<{
     reviews: z.ZodArray<z.ZodObject<{
         id: z.ZodString;
         subject: z.ZodString;
-        type: z.ZodEnum<["stale", "conflict", "outdated"]>;
+        type: z.ZodEnum<{
+            stale: "stale";
+            conflict: "conflict";
+            outdated: "outdated";
+        }>;
         question: z.ZodString;
-        options: z.ZodArray<z.ZodString, "many">;
+        options: z.ZodArray<z.ZodString>;
         knowledge_file: z.ZodString;
         agent_notes: z.ZodOptional<z.ZodString>;
         context: z.ZodOptional<z.ZodString>;
         answer: z.ZodOptional<z.ZodString>;
         created_at: z.ZodOptional<z.ZodString>;
         created_at_commit: z.ZodOptional<z.ZodString>;
-    }, "strip", z.ZodTypeAny, {
-        options: string[];
-        type: "stale" | "conflict" | "outdated";
-        subject: string;
-        id: string;
-        question: string;
-        knowledge_file: string;
-        agent_notes?: string | undefined;
-        context?: string | undefined;
-        answer?: string | undefined;
-        created_at?: string | undefined;
-        created_at_commit?: string | undefined;
-    }, {
-        options: string[];
-        type: "stale" | "conflict" | "outdated";
-        subject: string;
-        id: string;
-        question: string;
-        knowledge_file: string;
-        agent_notes?: string | undefined;
-        context?: string | undefined;
-        answer?: string | undefined;
-        created_at?: string | undefined;
-        created_at_commit?: string | undefined;
-    }>, "many">;
-    auto_fixed: z.ZodArray<z.ZodString, "many">;
+    }, z.core.$strip>>;
+    auto_fixed: z.ZodArray<z.ZodString>;
     done: z.ZodBoolean;
-}, "strip", z.ZodTypeAny, {
-    done: boolean;
-    reviews: {
-        options: string[];
-        type: "stale" | "conflict" | "outdated";
-        subject: string;
-        id: string;
-        question: string;
-        knowledge_file: string;
-        agent_notes?: string | undefined;
-        context?: string | undefined;
-        answer?: string | undefined;
-        created_at?: string | undefined;
-        created_at_commit?: string | undefined;
-    }[];
-    auto_fixed: string[];
-}, {
-    done: boolean;
-    reviews: {
-        options: string[];
-        type: "stale" | "conflict" | "outdated";
-        subject: string;
-        id: string;
-        question: string;
-        knowledge_file: string;
-        agent_notes?: string | undefined;
-        context?: string | undefined;
-        answer?: string | undefined;
-        created_at?: string | undefined;
-        created_at_commit?: string | undefined;
-    }[];
-    auto_fixed: string[];
-}>;
+}, z.core.$strip>;
 export type ReviewEntry = z.infer<typeof ReviewEntrySchema>;
 export type ChangesReviewerOutput = z.infer<typeof ChangesReviewerOutputSchema>;
 export interface AnalysisState {

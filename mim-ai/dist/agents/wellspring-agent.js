@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 import fs from 'node:fs';
 import path from 'node:path';
 export const WellspringOutputSchema = z.object({
@@ -154,6 +153,6 @@ function stripSchemaField(schema) {
     return rest;
 }
 export function getWellspringOutputJsonSchema() {
-    return stripSchemaField(zodToJsonSchema(WellspringOutputSchema));
+    return stripSchemaField(z.toJSONSchema(WellspringOutputSchema));
 }
 //# sourceMappingURL=wellspring-agent.js.map

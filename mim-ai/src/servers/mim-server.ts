@@ -16,7 +16,6 @@ import * as path from 'node:path';
 import { execSync } from 'node:child_process';
 import { homedir } from 'node:os';
 import { z } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 import { logInfo, logWarn, logError, AGENTS } from '../utils/logger.js';
 import { checkMimActivation } from '../utils/mim-check.js';
 

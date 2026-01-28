@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 import fs from 'node:fs';
 import path from 'node:path';
 export const ReviewEntrySchema = z.object({
@@ -196,6 +195,6 @@ function stripSchemaField(schema) {
     return rest;
 }
 export function getChangesReviewerOutputJsonSchema() {
-    return stripSchemaField(zodToJsonSchema(ChangesReviewerOutputSchema));
+    return stripSchemaField(z.toJSONSchema(ChangesReviewerOutputSchema));
 }
 //# sourceMappingURL=changes-reviewer.js.map

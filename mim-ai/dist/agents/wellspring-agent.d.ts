@@ -2,13 +2,7 @@ import { z } from 'zod';
 export declare const WellspringOutputSchema: z.ZodObject<{
     message: z.ZodString;
     done: z.ZodBoolean;
-}, "strip", z.ZodTypeAny, {
-    message: string;
-    done: boolean;
-}, {
-    message: string;
-    done: boolean;
-}>;
+}, z.core.$strip>;
 export type WellspringOutput = z.infer<typeof WellspringOutputSchema>;
 export interface AnsweredReview {
     id: string;

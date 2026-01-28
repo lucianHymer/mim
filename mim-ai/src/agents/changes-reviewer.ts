@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -232,5 +231,5 @@ function stripSchemaField(schema: Record<string, unknown>): Record<string, unkno
 }
 
 export function getChangesReviewerOutputJsonSchema(): Record<string, unknown> {
-  return stripSchemaField(zodToJsonSchema(ChangesReviewerOutputSchema) as Record<string, unknown>);
+  return stripSchemaField(z.toJSONSchema(ChangesReviewerOutputSchema) as Record<string, unknown>);
 }
