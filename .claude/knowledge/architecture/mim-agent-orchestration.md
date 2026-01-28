@@ -7,10 +7,10 @@ MIM v2 implements a sophisticated sequential agent pipeline with hybrid executio
 Four components coordinate through a file-based queue system:
 1. **Queue Processor Agent** (MCP Server) - Processes remember() entries
 2. **Changes Detection Orchestrator** (SessionStart hook) - Normal code that spawns Inquisitor swarm
-3. **Inquisitor Swarm** (Parallel Haiku subagents) - Research individual knowledge entries
-4. **Mímir Agent** (Wellspring screen in TUI) - Applies user decisions to knowledge base
+3. **Inquisitor Swarm** (Sequential Haiku subagents) - Research individual knowledge entries
+4. **Mímir Agent** (Wellspring screen in TUI) - Applies user decisions to knowledge base (see dedicated docs)
 
-Note: The Changes Detection stage is **not an agent** - it's regular TypeScript code (run-analysis.ts) that orchestrates a swarm of parallel Inquisitor agents.
+Note: The Changes Detection stage is **not an agent** - it's regular TypeScript code (run-analysis.ts) that orchestrates a swarm of sequential Inquisitor agents (with 5s delays to reduce API load).
 
 ## Key Coordination Pattern
 
@@ -36,10 +36,10 @@ The system uses **file-based asynchronous coordination** rather than agent-to-ag
 - Debounce logic checks `.claude/knowledge/.last-analysis` to avoid re-running on same commit
 - Reads all knowledge files and compares against current codebase state
 - Identifies stale (referenced items deleted), conflicting (docs contradict code), or outdated entries
-- Spawns Inquisitor subagents (Haiku) to research individual knowledge entries in parallel
-  - MAX_CONCURRENT_INQUISITORS = 5 for parallel execution
+- Spawns Inquisitor subagents (Haiku) to research individual knowledge entries sequentially
+  - 5-second delays between inquisitors to reduce API load
 - Creates pending-review JSON files for issues requiring human judgment
-- Auto-fixes minor issues (file path changes, typo corrections, etc.)
+- Auto-fixes are applied inline immediately during analysis (not written to review files)
 
 ### Stage 3: User Review (Interactive Game)
 - User runs `mim review` command which launches TUI game
@@ -49,15 +49,7 @@ The system uses **file-based asynchronous coordination** rather than agent-to-ag
 - Game transitions to Wellspring scene when all reviews answered
 
 ### Stage 4: Applying Decisions (Mímir Agent)
-- At the Wellspring (final TUI screen), the Mímir agent loads all answered review JSON files from disk
-- Iterates through each answered review
-- For each decision:
-  - Reads the knowledge file mentioned in the review
-  - Applies the user's chosen action (delete section, update content, keep as-is)
-  - Updates knowledge maps if content was deleted or topics changed
-  - Deletes the processed review JSON file
-  - Signals ready_for_next: true
-- When all reviews processed, signals done: true
+- See dedicated Mímir Agent documentation for details
 
 ## Agent Execution Patterns
 
@@ -69,18 +61,11 @@ The system uses **file-based asynchronous coordination** rather than agent-to-ag
 
 ### Changes Detection Orchestrator (Stage 2)
 - **Lifetime**: Per-invocation (triggered on SessionStart hook)
-- **Execution**: Regular code (not an agent) that spawns multiple Inquisitor subagents in parallel
+- **Execution**: Regular code (not an agent) that spawns Inquisitor subagents sequentially
   - Each Inquisitor researches one knowledge entry
+  - 5-second delays between inquisitors to reduce API load
   - Results aggregated into reviews array
-  - Parallel execution (MAX_CONCURRENT_INQUISITORS = 5) reduces analysis time
-- **Pattern**: Orchestrator code -> Multiple parallel Haiku subagents
-
-### Mímir Agent (at the Wellspring)
-- **Location**: The Wellspring is the final screen in the TUI game; Mímir is the agent you converse with there
-- **Lifetime**: Per-game session (runs until all reviews processed)
-- **Execution**: Sequential (one answered review at a time)
-- **Pattern**: Single session processing multiple items with ready_for_next signals
-- **Streaming**: Outputs text messages to TUI chat in real-time as work progresses
+- **Pattern**: Orchestrator code -> Sequential Haiku subagents with throttling
 
 ## No Direct Agent-to-Agent Communication
 - Agents never call other agents directly
@@ -88,44 +73,11 @@ The system uses **file-based asynchronous coordination** rather than agent-to-ag
 - Enables loose coupling and independent testing
 - Allows different execution environments (MCP server vs CLI game vs hooks)
 
-## Auto-Fix Review Flow
-
-Auto-fixable issues from Inquisitors are written to pending-review JSON files with `auto_apply: true` flag instead of being discarded.
-
-### Flow
-1. Inquisitor identifies issue with `severity: 'auto_fix'`
-2. run-analysis.ts writes review JSON with `auto_apply: true`, `type: 'auto_fix'`
-3. TUI's loadPendingReviews() skips auto_apply reviews (no user interaction needed)
-4. Wellspring's loadAnsweredReviews() includes auto_apply reviews
-5. Wellspring applies the fix from agent_notes without asking user
-
-### Review Structure for Autofixes
-
-```json
-{
-  "id": "...",
-  "type": "auto_fix",
-  "question": "Describes what's being fixed",
-  "options": [],
-  "agent_notes": "The specific fix to apply",
-  "auto_apply": true
-}
-```
-
-This gives Wellspring "second set of eyes" on autofixes while keeping them automatic.
-
 ## Schema Unification Pattern
 
 All agents use consistent schema structures:
-- ReviewEntry: Defines pending questions (id, subject, type, question, options, knowledge_file, agent_notes, auto_apply)
+- ReviewEntry: Defines pending questions (id, subject, type, question, options, knowledge_file, agent_notes)
 - Each agent understands and produces compatible JSON structures
 - Human doesn't see agent_notes (technical implementation details for applying decisions)
-- The `auto_apply` field (boolean) marks reviews that don't need user interaction
-
-**Data Flow for agent_notes:** The Inquisitor schema has two fields that flow to `agent_notes` in review files:
-- `suggested_fix` → used for `auto_fix` severity (line ~452 in run-analysis.ts)
-- `review_agent_notes` → used for `needs_review` severity (line ~471 in run-analysis.ts)
-
-Both are wired through so Wellspring receives technical implementation details for applying decisions.
 
 **Related files:** mim-ai/src/servers/mim-server.ts, mim-ai/src/agents/changes-reviewer.ts, mim-ai/src/agents/inquisitor.ts, mim-ai/src/agents/wellspring-agent.ts, mim-ai/src/tui/main.ts, mim-ai/bin/mim.js, mim-ai/src/hooks/run-analysis.ts

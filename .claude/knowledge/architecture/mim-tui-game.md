@@ -30,21 +30,21 @@ Mím implements a game loop with 5 screens (TITLE, CHARACTER_SELECT, BRIDGE_APPR
 
 - Modal dialog overlay for answering review questions
 - Displays: question text, numbered options [1], [2], etc., "Other" text input option
-- Input modes: NORMAL (select option by number), TEXT (free-form response)
-- Color coding: yellow (questions), green (selected option), dim (hints)
+- Select option by number, or choose "Other" for free-form text input
+- Color coding: cyan, yellow, green for content; dim for status
 
 ## WELLSPRING Chat Panel
 
 - Position: Right side panel at x = TILE_AREA_WIDTH + 3, width = Math.max(40, terminal_width - x - 1)
 - Displays: Mímir agent messages, user messages, processing indicator, tool activity
 - Text wrapping at panel width
-- Color coding: cyan (Mímir messages), green (You: user messages), dim (status/hints)
+- Color coding: cyan, yellow, green for content; dim for status
 - Scrollable message history with INSERT/SCROLL mode toggle
 
 ## Sprite System
 
 Reuses Arbiter patterns:
-- Same animation types (walking, hopping, magic, bubbling)
+- Same animation types (walking, hopping, magic, bubbling, flipping)
 - Same indicators (alert, chat)
 - Controlled vs scripted movement
 - Registered with animation loop: `registerSprite`, `unregisterSprite`
