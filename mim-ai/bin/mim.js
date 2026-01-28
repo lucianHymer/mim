@@ -107,6 +107,7 @@ Use markdown links to navigate to specific documentation.
 const GITIGNORE_MIM_SECTION = `
 # Mím - Transient/local state files
 .claude/knowledge/remember-queue/
+.claude/knowledge/pending-review/
 .claude/knowledge/mim.log
 .claude/knowledge/.analysis-lock
 .claude/knowledge/.last-analysis
@@ -121,7 +122,6 @@ const GITATTRIBUTES_MIM_SECTION = `
 # Mím - Merge strategies for knowledge files
 .claude/knowledge/**/*.md merge=union
 .claude/knowledge/KNOWLEDGE_MAP*.md merge=union
-.claude/knowledge/pending-review/*.json merge=ours
 `;
 
 const args = process.argv.slice(2);

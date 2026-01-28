@@ -23,6 +23,7 @@ Thumbs.db
 
 # Mím - Transient/local state files
 .claude/knowledge/remember-queue/
+.claude/knowledge/pending-review/
 .claude/knowledge/mim.log
 .claude/knowledge/.analysis-lock
 .claude/knowledge/.last-analysis
