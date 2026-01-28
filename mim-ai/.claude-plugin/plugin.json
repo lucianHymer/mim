@@ -1,12 +1,12 @@
 {
   "name": "mim-ai",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Persistent memory for Claude Code - never forget what you learn",
   "author": {
     "name": "Lucian Hymer"
   },
   "repository": "https://github.com/lucianHymer/mim",
-  "license": "MIT",
+  "license": "FSL-1.1-MIT",
   "keywords": ["memory", "knowledge", "persistence", "mcp"],
   "mcpServers": {
     "mim": {

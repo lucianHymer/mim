@@ -9,6 +9,8 @@ export declare const ReviewEntrySchema: z.ZodObject<{
     agent_notes: z.ZodOptional<z.ZodString>;
     context: z.ZodOptional<z.ZodString>;
     answer: z.ZodOptional<z.ZodString>;
+    created_at: z.ZodOptional<z.ZodString>;
+    created_at_commit: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     options: string[];
     type: "stale" | "conflict" | "outdated";
@@ -19,6 +21,8 @@ export declare const ReviewEntrySchema: z.ZodObject<{
     agent_notes?: string | undefined;
     context?: string | undefined;
     answer?: string | undefined;
+    created_at?: string | undefined;
+    created_at_commit?: string | undefined;
 }, {
     options: string[];
     type: "stale" | "conflict" | "outdated";
@@ -29,6 +33,8 @@ export declare const ReviewEntrySchema: z.ZodObject<{
     agent_notes?: string | undefined;
     context?: string | undefined;
     answer?: string | undefined;
+    created_at?: string | undefined;
+    created_at_commit?: string | undefined;
 }>;
 export declare const ChangesReviewerOutputSchema: z.ZodObject<{
     reviews: z.ZodArray<z.ZodObject<{
@@ -41,6 +47,8 @@ export declare const ChangesReviewerOutputSchema: z.ZodObject<{
         agent_notes: z.ZodOptional<z.ZodString>;
         context: z.ZodOptional<z.ZodString>;
         answer: z.ZodOptional<z.ZodString>;
+        created_at: z.ZodOptional<z.ZodString>;
+        created_at_commit: z.ZodOptional<z.ZodString>;
     }, "strip", z.ZodTypeAny, {
         options: string[];
         type: "stale" | "conflict" | "outdated";
@@ -51,6 +59,8 @@ export declare const ChangesReviewerOutputSchema: z.ZodObject<{
         agent_notes?: string | undefined;
         context?: string | undefined;
         answer?: string | undefined;
+        created_at?: string | undefined;
+        created_at_commit?: string | undefined;
     }, {
         options: string[];
         type: "stale" | "conflict" | "outdated";
@@ -61,6 +71,8 @@ export declare const ChangesReviewerOutputSchema: z.ZodObject<{
         agent_notes?: string | undefined;
         context?: string | undefined;
         answer?: string | undefined;
+        created_at?: string | undefined;
+        created_at_commit?: string | undefined;
     }>, "many">;
     auto_fixed: z.ZodArray<z.ZodString, "many">;
     done: z.ZodBoolean;
@@ -76,6 +88,8 @@ export declare const ChangesReviewerOutputSchema: z.ZodObject<{
         agent_notes?: string | undefined;
         context?: string | undefined;
         answer?: string | undefined;
+        created_at?: string | undefined;
+        created_at_commit?: string | undefined;
     }[];
     auto_fixed: string[];
 }, {
@@ -90,6 +104,8 @@ export declare const ChangesReviewerOutputSchema: z.ZodObject<{
         agent_notes?: string | undefined;
         context?: string | undefined;
         answer?: string | undefined;
+        created_at?: string | undefined;
+        created_at_commit?: string | undefined;
     }[];
     auto_fixed: string[];
 }>;

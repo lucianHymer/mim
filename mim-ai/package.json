@@ -1,6 +1,6 @@
 {
   "name": "mim-ai",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Knowledge persistence system for Claude Code",
   "type": "module",
   "main": "dist/index.js",

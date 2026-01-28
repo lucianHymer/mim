@@ -21947,8 +21947,12 @@ var ReviewEntrySchema = external_exports.object({
   agent_notes: external_exports.string().optional(),
   context: external_exports.string().optional(),
   // Additional context for the reviewer
-  answer: external_exports.string().optional()
+  answer: external_exports.string().optional(),
   // User's answer once reviewed
+  created_at: external_exports.string().optional(),
+  // ISO timestamp of when the review was created
+  created_at_commit: external_exports.string().optional()
+  // Git commit hash when the review was created
 });
 var ChangesReviewerOutputSchema = external_exports.object({
   reviews: external_exports.array(ReviewEntrySchema),
@@ -22205,32 +22209,6 @@ function pendingReviewExists(entryId) {
   const reviewPath = path3.join(process.cwd(), PENDING_DIR2, `${entryId}.json`);
   return fs4.existsSync(reviewPath);
 }
-function getPendingReviews() {
-  const reviews = [];
-  const dir = path3.join(process.cwd(), PENDING_DIR2);
-  if (!fs4.existsSync(dir))
-    return reviews;
-  const files = fs4.readdirSync(dir).filter((f) => f.endsWith(".json"));
-  for (const file of files) {
-    try {
-      const content = fs4.readFileSync(path3.join(dir, file), "utf-8");
-      const review = JSON.parse(content);
-      if (!review.answer) {
-        reviews.push({ ...review, _filename: file });
-      }
-    } catch {
-      logWarn(AGENT, `Failed to read review file: ${file}`);
-    }
-  }
-  return reviews;
-}
-function deletePendingReview(filename) {
-  const filepath = path3.join(process.cwd(), PENDING_DIR2, filename);
-  if (fs4.existsSync(filepath)) {
-    fs4.unlinkSync(filepath);
-    logInfo(AGENT, `Deleted stale review: ${filename}`);
-  }
-}
 function getCurrentHead() {
   try {
     return execSync("git rev-parse HEAD", { encoding: "utf-8" }).trim();
@@ -22259,55 +22237,6 @@ function getAllKnowledgeEntries() {
     }
   }
   return entries;
-}
-async function checkReviewRelevance(review) {
-  const prompt = `Check if this pending review is still relevant:
-
-**Review ID:** ${review.id}
-**Subject:** ${review.subject}
-**Type:** ${review.type}
-**Question:** ${review.question}
-**Context:** ${review.context}
-**Knowledge File:** ${review.knowledge_file}
-
-Investigate if this issue still exists. The review was created because of a detected issue in the knowledge base. Check if:
-1. The knowledge file still exists
-2. The issue described is still present
-3. Code changes may have resolved the conflict
-
-Respond with:
-- still_relevant: true if the issue persists and needs human review
-- still_relevant: false if the issue was resolved (explain why)
-- reason: explanation of your finding`;
-  try {
-    const session = query({
-      prompt,
-      options: {
-        model: "haiku",
-        pathToClaudeCodeExecutable: CLAUDE_EXECUTABLE,
-        systemPrompt: "You are checking if a pending knowledge review is still relevant. Be brief and direct.",
-        canUseTool: async (tool, input) => {
-          const allowedTools = ["Read", "Glob", "Grep"];
-          if (allowedTools.includes(tool)) {
-            return { behavior: "allow", updatedInput: input };
-          }
-          return { behavior: "deny", message: "Tool not allowed" };
-        }
-      }
-    });
-    for await (const event of session) {
-      if (event.type === "result" && event.subtype === "success") {
-        const text = event.text || "";
-        const isMoot = text.toLowerCase().includes("still_relevant: false") || text.toLowerCase().includes("no longer relevant") || text.toLowerCase().includes("issue resolved") || text.toLowerCase().includes("has been fixed");
-        return { review, stillRelevant: !isMoot, reason: text };
-      }
-    }
-    return { review, stillRelevant: true, reason: "Could not determine" };
-  } catch (error2) {
-    const message = error2 instanceof Error ? error2.message : String(error2);
-    logWarn(AGENT, `Failed to check review relevance: ${message}`);
-    return { review, stillRelevant: true, reason: "Error checking" };
-  }
 }
 async function runInquisitor(entry) {
   const prompt = `Investigate this knowledge entry:
@@ -22464,7 +22393,9 @@ Auto-fix was attempted but failed. Suggested fix: ${output.issue.suggested_fix}`
           "Remove this entry"
         ],
         knowledge_file: knowledgeFile,
-        agent_notes: output.issue.suggested_fix
+        agent_notes: output.issue.suggested_fix,
+        created_at: (/* @__PURE__ */ new Date()).toISOString(),
+        created_at_commit: currentHead
       };
       writePendingReview(review);
       updateEntryStatus(result.entry.id, "review_pending", currentHead);
@@ -22487,7 +22418,9 @@ Location recommendation: ${output.location_context.scope} - ${output.location_co
           "Remove this entry"
         ],
         knowledge_file: `${result.entry.category}/${result.entry.file}`,
-        agent_notes: output.issue.review_agent_notes || ""
+        agent_notes: output.issue.review_agent_notes || "",
+        created_at: (/* @__PURE__ */ new Date()).toISOString(),
+        created_at_commit: currentHead
       };
       writePendingReview(review);
       updateEntryStatus(result.entry.id, "review_pending", currentHead);
@@ -22562,21 +22495,6 @@ async function main() {
     }
     logInfo(AGENT, `Current HEAD: ${currentHead}`);
     try {
-      const pendingReviews = getPendingReviews();
-      if (pendingReviews.length > 0) {
-        logInfo(AGENT, `Checking ${pendingReviews.length} existing pending reviews...`);
-        const reviewChecks = await Promise.all(pendingReviews.map((review) => checkReviewRelevance(review)));
-        let staleCount = 0;
-        for (const check2 of reviewChecks) {
-          if (!check2.stillRelevant) {
-            deletePendingReview(check2.review._filename);
-            staleCount++;
-          }
-        }
-        if (staleCount > 0) {
-          logInfo(AGENT, `Cleaned up ${staleCount} stale reviews`);
-        }
-      }
       const entries = getAllKnowledgeEntries();
       if (entries.length === 0) {
         logInfo(AGENT, "No knowledge entries found to analyze");

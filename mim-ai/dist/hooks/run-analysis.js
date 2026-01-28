@@ -120,40 +120,6 @@ function pendingReviewExists(entryId) {
     return fs.existsSync(reviewPath);
 }
 /**
- * Read existing pending reviews
- */
-function getPendingReviews() {
-    const reviews = [];
-    const dir = path.join(process.cwd(), PENDING_DIR);
-    if (!fs.existsSync(dir))
-        return reviews;
-    const files = fs.readdirSync(dir).filter((f) => f.endsWith(".json"));
-    for (const file of files) {
-        try {
-            const content = fs.readFileSync(path.join(dir, file), "utf-8");
-            const review = JSON.parse(content);
-            if (!review.answer) {
-                // Only unanswered reviews
-                reviews.push({ ...review, _filename: file });
-            }
-        }
-        catch {
-            logWarn(AGENT, `Failed to read review file: ${file}`);
-        }
-    }
-    return reviews;
-}
-/**
- * Delete a pending review file
- */
-function deletePendingReview(filename) {
-    const filepath = path.join(process.cwd(), PENDING_DIR, filename);
-    if (fs.existsSync(filepath)) {
-        fs.unlinkSync(filepath);
-        logInfo(AGENT, `Deleted stale review: ${filename}`);
-    }
-}
-/**
  * Get the current git HEAD commit hash
  */
 function getCurrentHead() {
@@ -189,64 +155,6 @@ function getAllKnowledgeEntries() {
         }
     }
     return entries;
-}
-/**
- * Check if a pending review is still relevant
- * Returns true if the review should be kept, false if it's now moot
- */
-async function checkReviewRelevance(review) {
-    const prompt = `Check if this pending review is still relevant:
-
-**Review ID:** ${review.id}
-**Subject:** ${review.subject}
-**Type:** ${review.type}
-**Question:** ${review.question}
-**Context:** ${review.context}
-**Knowledge File:** ${review.knowledge_file}
-
-Investigate if this issue still exists. The review was created because of a detected issue in the knowledge base. Check if:
-1. The knowledge file still exists
-2. The issue described is still present
-3. Code changes may have resolved the conflict
-
-Respond with:
-- still_relevant: true if the issue persists and needs human review
-- still_relevant: false if the issue was resolved (explain why)
-- reason: explanation of your finding`;
-    try {
-        const session = query({
-            prompt,
-            options: {
-                model: "haiku",
-                pathToClaudeCodeExecutable: CLAUDE_EXECUTABLE,
-                systemPrompt: "You are checking if a pending knowledge review is still relevant. Be brief and direct.",
-                canUseTool: async (tool, input) => {
-                    const allowedTools = ["Read", "Glob", "Grep"];
-                    if (allowedTools.includes(tool)) {
-                        return { behavior: "allow", updatedInput: input };
-                    }
-                    return { behavior: "deny", message: "Tool not allowed" };
-                },
-            },
-        });
-        for await (const event of session) {
-            if (event.type === "result" && event.subtype === "success") {
-                const text = event.text || "";
-                // Simple heuristic: if response contains "still_relevant: false" or "no longer", it's moot
-                const isMoot = text.toLowerCase().includes("still_relevant: false") ||
-                    text.toLowerCase().includes("no longer relevant") ||
-                    text.toLowerCase().includes("issue resolved") ||
-                    text.toLowerCase().includes("has been fixed");
-                return { review, stillRelevant: !isMoot, reason: text };
-            }
-        }
-        return { review, stillRelevant: true, reason: "Could not determine" };
-    }
-    catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        logWarn(AGENT, `Failed to check review relevance: ${message}`);
-        return { review, stillRelevant: true, reason: "Error checking" };
-    }
 }
 /**
  * Run a single inquisitor agent on one knowledge entry
@@ -425,6 +333,8 @@ async function processInquisitorResult(result, currentHead) {
                 ],
                 knowledge_file: knowledgeFile,
                 agent_notes: output.issue.suggested_fix,
+                created_at: new Date().toISOString(),
+                created_at_commit: currentHead,
             };
             writePendingReview(review);
             updateEntryStatus(result.entry.id, "review_pending", currentHead);
@@ -444,6 +354,8 @@ async function processInquisitorResult(result, currentHead) {
                 ],
                 knowledge_file: `${result.entry.category}/${result.entry.file}`,
                 agent_notes: output.issue.review_agent_notes || '',
+                created_at: new Date().toISOString(),
+                created_at_commit: currentHead,
             };
             writePendingReview(review);
             updateEntryStatus(result.entry.id, "review_pending", currentHead);
@@ -534,23 +446,7 @@ async function main() {
         }
         logInfo(AGENT, `Current HEAD: ${currentHead}`);
         try {
-            // PHASE 1: Check existing pending reviews first
-            const pendingReviews = getPendingReviews();
-            if (pendingReviews.length > 0) {
-                logInfo(AGENT, `Checking ${pendingReviews.length} existing pending reviews...`);
-                const reviewChecks = await Promise.all(pendingReviews.map((review) => checkReviewRelevance(review)));
-                let staleCount = 0;
-                for (const check of reviewChecks) {
-                    if (!check.stillRelevant) {
-                        deletePendingReview(check.review._filename);
-                        staleCount++;
-                    }
-                }
-                if (staleCount > 0) {
-                    logInfo(AGENT, `Cleaned up ${staleCount} stale reviews`);
-                }
-            }
-            // PHASE 2: Investigate knowledge entries
+            // Investigate knowledge entries
             const entries = getAllKnowledgeEntries();
             if (entries.length === 0) {
                 logInfo(AGENT, "No knowledge entries found to analyze");

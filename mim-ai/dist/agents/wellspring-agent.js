@@ -94,6 +94,8 @@ You will receive review entries with user answers:
 - knowledge_file: The file that needs updating
 - type: 'stale', 'conflict', or 'outdated'
 - agent_notes: Technical details about what to change
+- created_at: When the review was created (ISO timestamp). If this is old, the issue may have been resolved by subsequent code changes - verify before applying.
+- created_at_commit: The git commit when the review was created. Compare against current HEAD to gauge staleness.
 
 ## Actions
 
