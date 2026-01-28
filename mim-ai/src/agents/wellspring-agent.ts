@@ -21,6 +21,8 @@ export interface AnsweredReview {
   knowledge_file: string;
   agent_notes: string;  // Technical details for applying the decision
   answer: string;  // The user's answer
+  created_at?: string;  // ISO timestamp of when the review was created
+  created_at_commit?: string;  // Git commit hash when the review was created
   _filename?: string;  // Internal: actual filename on disk (for deletion)
 }
 
@@ -116,6 +118,8 @@ You will receive review entries with user answers:
 - knowledge_file: The file that needs updating
 - type: 'stale', 'conflict', or 'outdated'
 - agent_notes: Technical details about what to change
+- created_at: When the review was created (ISO timestamp). If this is old, the issue may have been resolved by subsequent code changes - verify before applying.
+- created_at_commit: The git commit when the review was created. Compare against current HEAD to gauge staleness.
 
 ## Actions
 

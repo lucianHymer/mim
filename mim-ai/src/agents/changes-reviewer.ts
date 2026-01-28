@@ -13,6 +13,8 @@ export const ReviewEntrySchema = z.object({
   agent_notes: z.string().optional(),
   context: z.string().optional(),  // Additional context for the reviewer
   answer: z.string().optional(),  // User's answer once reviewed
+  created_at: z.string().optional(),  // ISO timestamp of when the review was created
+  created_at_commit: z.string().optional(),  // Git commit hash when the review was created
 });
 
 export const ChangesReviewerOutputSchema = z.object({
