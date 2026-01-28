@@ -15,6 +15,7 @@ import { execSync } from 'node:child_process';
 import { homedir } from 'node:os';
 import { z } from 'zod';
 import { logInfo, logWarn, logError, AGENTS } from '../utils/logger.js';
+import { checkMimActivation } from '../utils/mim-check.js';
 /**
  * Queue Processor Output Schema (Zod)
  */
@@ -599,6 +600,12 @@ async function handleRemember(params) {
     const filepath = path.join(queueDir, filename);
     fs.writeFileSync(filepath, JSON.stringify(entry, null, 2));
     logInfo(AGENTS.MCP_SERVER, `Entry queued: ${id} [${normalizedCategory}] ${topic}`);
+    // Check if Mím is fully activated before triggering expensive processing
+    const activation = checkMimActivation(projectRoot);
+    if (!activation.activated) {
+        logInfo(AGENTS.MCP_SERVER, `Entry queued but processing skipped: ${activation.message}`);
+        return `✓ Remembered: [${normalizedCategory}] ${topic}\n(Queued for later - ${activation.message})`;
+    }
     // Initialize queue processor if needed
     if (!queueProcessor) {
         queueProcessor = new QueueProcessor(projectRoot);
@@ -724,8 +731,18 @@ async function handleRequest(request) {
                 }
             });
         case 'notifications/initialized':
-            // Process any pending queue entries on startup
+            // Check if Mím is fully activated before starting expensive background processing
             const projectRoot = getProjectRoot();
+            const activation = checkMimActivation(projectRoot);
+            if (!activation.activated) {
+                logInfo(AGENTS.MCP_SERVER, activation.message);
+                // Still create processor but don't auto-process queue
+                if (!queueProcessor) {
+                    queueProcessor = new QueueProcessor(projectRoot);
+                }
+                return null;
+            }
+            logInfo(AGENTS.MCP_SERVER, activation.message);
             if (!queueProcessor) {
                 queueProcessor = new QueueProcessor(projectRoot);
             }

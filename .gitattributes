@@ -1,0 +1,8 @@
+# Mím - Knowledge system markers
+.claude/knowledge/** linguist-generated
+.claude/knowledge/** mim-managed
+
+# Mím - Merge strategies for knowledge files
+.claude/knowledge/**/*.md merge=union
+.claude/knowledge/KNOWLEDGE_MAP*.md merge=union
+.claude/knowledge/pending-review/*.json merge=ours

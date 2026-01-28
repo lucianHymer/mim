@@ -100,6 +100,30 @@ Use markdown links to navigate to specific documentation.
 <!-- [Topic](gotchas/file.md) entries will be added here -->
 `;
 
+// ============================================
+// Git configuration templates
+// ============================================
+
+const GITIGNORE_MIM_SECTION = `
+# Mím - Transient/local state files
+.claude/knowledge/remember-queue/
+.claude/knowledge/mim.log
+.claude/knowledge/.analysis-lock
+.claude/knowledge/.last-analysis
+.claude/knowledge/.entry-status.json
+`;
+
+const GITATTRIBUTES_MIM_SECTION = `
+# Mím - Knowledge system markers
+.claude/knowledge/** linguist-generated
+.claude/knowledge/** mim-managed
+
+# Mím - Merge strategies for knowledge files
+.claude/knowledge/**/*.md merge=union
+.claude/knowledge/KNOWLEDGE_MAP*.md merge=union
+.claude/knowledge/pending-review/*.json merge=ours
+`;
+
 const args = process.argv.slice(2);
 const command = args[0] || 'status';
 
@@ -256,6 +280,24 @@ async function initKnowledge() {
     skipped.push('CLAUDE.md (already configured)');
   }
 
+  // Update .gitignore
+  const gitignorePath = path.join(process.cwd(), '.gitignore');
+  const gitignoreUpdated = updateGitConfig(gitignorePath, GITIGNORE_MIM_SECTION, '# Mím -');
+  if (gitignoreUpdated) {
+    created.push('.gitignore (updated with Mím exclusions)');
+  } else {
+    skipped.push('.gitignore (already configured)');
+  }
+
+  // Update .gitattributes
+  const gitattributesPath = path.join(process.cwd(), '.gitattributes');
+  const gitattributesUpdated = updateGitConfig(gitattributesPath, GITATTRIBUTES_MIM_SECTION, '# Mím -');
+  if (gitattributesUpdated) {
+    created.push('.gitattributes (updated with Mím merge strategies)');
+  } else {
+    skipped.push('.gitattributes (already configured)');
+  }
+
   // Print summary
   console.log('Knowledge structure initialized.\n');
 
@@ -330,6 +372,33 @@ ${requiredRefs.join('\n')}
   }
 
   return false;
+}
+
+/**
+ * Update a git config file (.gitignore or .gitattributes) with Mím section
+ * Returns true if updated, false if already configured
+ */
+function updateGitConfig(filePath, section, marker) {
+  let content = '';
+  const exists = fs.existsSync(filePath);
+
+  if (exists) {
+    content = fs.readFileSync(filePath, 'utf-8');
+
+    // Check if Mím section already exists
+    if (content.includes(marker)) {
+      return false; // Already configured
+    }
+
+    // Append Mím section
+    content = content.trimEnd() + '\n' + section;
+  } else {
+    // Create new file with Mím section
+    content = section.trim() + '\n';
+  }
+
+  fs.writeFileSync(filePath, content);
+  return true;
 }
 
 /**

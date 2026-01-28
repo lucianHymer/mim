@@ -20,3 +20,10 @@ Thumbs.db
 .claude/arbiter.tmp.log
 .claude/arbiter-crash-report.log
 .claude/arbiter-chat-history.log
+
+# Mím - Transient/local state files
+.claude/knowledge/remember-queue/
+.claude/knowledge/mim.log
+.claude/knowledge/.analysis-lock
+.claude/knowledge/.last-analysis
+.claude/knowledge/.entry-status.json

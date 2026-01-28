@@ -9,6 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
+import { checkMimActivation } from "../utils/mim-check.js";
 const KNOWLEDGE_DIR = ".claude/knowledge";
 const PENDING_DIR = path.join(KNOWLEDGE_DIR, "pending-review");
 function runMimInit() {
@@ -94,10 +95,14 @@ async function main() {
     runMimInit();
     const pendingCount = countPendingReviews();
     const messages = [];
-    // Always spawn background analysis - the lock in run-analysis.ts prevents concurrent runs,
-    // and the per-entry manifest handles throttling individual entries
-    messages.push("📜 Mím is analyzing in the background...");
-    spawnBackgroundAnalysis();
+    // Check if Mím CLI is installed before spawning background analysis
+    const activation = checkMimActivation(process.cwd());
+    if (activation.activated) {
+        // Spawn background analysis - the lock in run-analysis.ts prevents concurrent runs,
+        // and the per-entry manifest handles throttling individual entries
+        messages.push("📜 Mím is analyzing in the background...");
+        spawnBackgroundAnalysis();
+    }
     if (pendingCount > 0) {
         messages.push("");
         messages.push(`🗣️ ${pendingCount} pending review${pendingCount > 1 ? "s" : ""} await your decision.`);
