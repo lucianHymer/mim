@@ -2,6 +2,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+// NOTE: slugify logic is duplicated from servers/mim-server.cjs.
+// Keep both in sync if changing the algorithm.
+const PLURAL = { pattern: 'patterns', dependency: 'dependencies', gotcha: 'gotchas', workflow: 'workflows' };
+
 try {
   // Find project root by walking up to .git
   let root = process.cwd();
@@ -19,10 +23,18 @@ try {
   // 2. Ensure CLAUDE.md has @ references
   const claudeMd = path.join(root, 'CLAUDE.md');
   const claudeContent = fs.existsSync(claudeMd) ? fs.readFileSync(claudeMd, 'utf-8') : '';
-  if (!claudeContent.includes('@.claude/knowledge/INSTRUCTIONS.md') ||
-      !claudeContent.includes('@.claude/knowledge/KNOWLEDGE_MAP_CLAUDE.md')) {
-    const section = '\n\n## Mim Knowledge\n\n@.claude/knowledge/INSTRUCTIONS.md\n@.claude/knowledge/KNOWLEDGE_MAP_CLAUDE.md\n';
-    fs.writeFileSync(claudeMd, claudeContent + section);
+  const hasInstructions = claudeContent.includes('@.claude/knowledge/INSTRUCTIONS.md');
+  const hasMap = claudeContent.includes('@.claude/knowledge/KNOWLEDGE_MAP_CLAUDE.md');
+  if (!hasInstructions || !hasMap) {
+    let append = '';
+    if (!hasInstructions && !hasMap) {
+      append = '\n\n## Mim Knowledge\n\n@.claude/knowledge/INSTRUCTIONS.md\n@.claude/knowledge/KNOWLEDGE_MAP_CLAUDE.md\n';
+    } else if (!hasInstructions) {
+      append = '\n@.claude/knowledge/INSTRUCTIONS.md\n';
+    } else {
+      append = '\n@.claude/knowledge/KNOWLEDGE_MAP_CLAUDE.md\n';
+    }
+    fs.writeFileSync(claudeMd, claudeContent + append);
   }
 
   // 3. Ensure .gitignore has v3 Mim entries
@@ -42,21 +54,29 @@ try {
   }
 
   // 5. One-time v2 queue migration
+  let migratedCount = 0;
   const queueDir = path.join(kDir, 'remember-queue');
   if (fs.existsSync(queueDir)) {
     const files = fs.readdirSync(queueDir).filter(f => f.endsWith('.json'));
     for (const file of files) {
       try {
         const entry = JSON.parse(fs.readFileSync(path.join(queueDir, file), 'utf-8')).entry;
-        const safeCat = (entry.category || 'uncategorized').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'uncategorized';
-        let slug = (entry.topic || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        // Type validation
+        if (typeof entry.category !== 'string' || typeof entry.topic !== 'string' || typeof entry.details !== 'string') continue;
+        let safeCat = entry.category.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'uncategorized';
+        safeCat = PLURAL[safeCat] || safeCat;
+        let slug = entry.topic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
         if (!slug) slug = 'untitled-' + Date.now();
         if (slug.length > 100) slug = slug.substring(0, 100).replace(/-$/, '');
         const catDir = path.join(kDir, safeCat);
+        const targetPath = path.join(catDir, slug + '.md');
+        // Path traversal guard
+        if (!targetPath.startsWith(kDir + path.sep)) continue;
         fs.mkdirSync(catDir, { recursive: true });
         const content = `# ${entry.topic}\n\n${entry.details}\n\n**Related files:** ${entry.files || 'none'}\n`;
-        fs.writeFileSync(path.join(catDir, slug + '.md'), content);
+        fs.writeFileSync(targetPath, content);
         fs.unlinkSync(path.join(queueDir, file));
+        migratedCount++;
       } catch { /* skip malformed entries */ }
     }
     try { fs.rmdirSync(queueDir); } catch { /* not empty or already gone */ }
@@ -64,10 +84,16 @@ try {
 
   // 6. Output JSON
   const output = { hookSpecificOutput: { hookEventName: 'SessionStart' } };
+  const messages = [];
   if (unresolvedCount > 0)
-    output.hookSpecificOutput.additionalContext = `Mim: ${unresolvedCount} unresolved knowledge item${unresolvedCount > 1 ? 's' : ''}. Run /mim:review to resolve.`;
+    messages.push(`${unresolvedCount} unresolved knowledge item${unresolvedCount > 1 ? 's' : ''}. Run /mim:review to resolve.`);
+  if (migratedCount > 0)
+    messages.push(`Migrated ${migratedCount} v2 queue entr${migratedCount > 1 ? 'ies' : 'y'}. Run /mim:validate to update the knowledge map.`);
+  if (messages.length > 0)
+    output.hookSpecificOutput.additionalContext = 'Mim: ' + messages.join(' ');
   console.log(JSON.stringify(output));
-} catch {
+} catch (err) {
+  console.error('[mim] session-start error:', err.message);
   console.log(JSON.stringify({ continue: true }));
   process.exit(0);
 }

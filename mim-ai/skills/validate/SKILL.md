@@ -1,7 +1,6 @@
 ---
 name: validate
 description: Validates all knowledge entries against the current codebase. Auto-fixes aggressively and writes unresolved.md for ambiguous items. Use when asked to "validate knowledge", "check knowledge entries", or "clean up stale knowledge".
-disable-model-invocation: true
 allowed-tools: Read, Write, Edit, Glob, Grep, Task
 ---
 
@@ -11,7 +10,7 @@ Validate all knowledge entries against the current codebase. Auto-fix what you c
 
 ## Steps
 
-1. **Discover entries.** Use Glob to find all `.claude/knowledge/{category}/*.md` files. Exclude `INSTRUCTIONS.md`, `KNOWLEDGE_MAP.md`, `KNOWLEDGE_MAP_CLAUDE.md`, and `unresolved.md`.
+1. **Discover entries.** Use Glob to find all `.claude/knowledge/{category}/*.md` files. Exclude `INSTRUCTIONS.md`, `KNOWLEDGE_MAP_CLAUDE.md`, and `unresolved.md`.
 
 2. **Validate by category.** For each category directory, use the Task tool with `subagent_type: "knowledge-researcher"` to validate entries. Pass the full file contents of every knowledge file in that category. The subagent checks file references, patterns, and conventions against the current codebase and returns findings as JSON.
 
@@ -51,9 +50,3 @@ Validate all knowledge entries against the current codebase. Auto-fix what you c
 - Two entries contradict each other -> keep newer, delete older
 - Entry is about a deleted feature -> DELETE
 
-## Consolidation Criteria
-
-- Redundant sections from repeated appends -> consolidate into single terse summary
-- Contradictory sections -> keep latest, rewrite as single entry
-- File exceeds ~20 lines -> consolidate
-- Overlapping files in same category -> merge into one file

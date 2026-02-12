@@ -29,6 +29,8 @@ function atomicWrite(filePath, content) {
   fs.renameSync(tmp, filePath);
 }
 
+// NOTE: This logic is duplicated in scripts/session-start.mjs for v2 migration.
+// Keep both in sync if changing the slugify algorithm.
 function slugify(str) {
   let s = str.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   if (!s) s = 'untitled-' + Date.now();
@@ -63,7 +65,7 @@ function handleRemember(args) {
   const category = args && args.category;
   const topic = args && args.topic;
   const details = args && args.details;
-  const files = (args && args.files) || 'none';
+  const files = (args && typeof args.files === 'string' && args.files.trim()) || 'none';
 
   if (!category || typeof category !== 'string' || !category.trim())
     return toolResult('Error: category is required', true);
@@ -86,9 +88,10 @@ function handleRemember(args) {
   // Ensure category directory
   fs.mkdirSync(categoryDir, { recursive: true });
 
-  // Build content
+  // Build content (append if file exists, create otherwise)
+  const existed = fs.existsSync(targetPath);
   let content;
-  if (fs.existsSync(targetPath)) {
+  if (existed) {
     const existing = fs.readFileSync(targetPath, 'utf8');
     content = existing + '\n\n---\n\n' + details.trim() + '\n\n**Related files:** ' + files;
   } else {
@@ -102,7 +105,7 @@ function handleRemember(args) {
   // Update knowledge map
   updateMap(safeCategory, slug);
 
-  return toolResult('Remembered: [' + safeCategory + '] ' + topic.trim());
+  return toolResult('Remembered: [' + safeCategory + '] ' + topic.trim() + (existed ? ' (appended)' : ' (new)'));
 }
 
 // --- Map update ---
@@ -174,7 +177,7 @@ function handleRequest(req) {
 
 const REMEMBER_TOOL = {
   name: 'remember',
-  description: 'Capture project discoveries and learnings for persistent documentation. Automatically preserves knowledge about architecture, patterns, workflows, dependencies, and unique behaviors.\n\n\ud83c\udfaf USE THIS TOOL when you:\n\u2022 Discover how something works in this project\n\u2022 Learn project-specific patterns or conventions\n\u2022 Find configuration details or requirements\n\u2022 Understand architecture or system design\n\u2022 Encounter non-obvious behaviors or gotchas\n\u2022 Figure out dependencies or integrations\n\u2022 Realize your assumptions were incorrect\n\n\ud83d\udca1 KEY TRIGGERS - phrases that signal discovery:\n"I learned that", "turns out", "actually it\'s", "I discovered", "for future reference", "good to know", "interesting that"\n\n\u26a1 ALWAYS CAPTURE project-specific knowledge immediately - this creates the persistent memory that survives context resets.\n\n\u2713 Examples: Database schema conventions, API authentication flows, build system quirks\n\u2717 Skip: Current bug fixes, temporary debug output, generic programming concepts\n\nKnowledge is automatically deduplicated and organized. Conflicts are queued for human review.',
+  description: 'Capture project discoveries and learnings for persistent documentation. Automatically preserves knowledge about architecture, patterns, workflows, dependencies, and unique behaviors.\n\n\ud83c\udfaf USE THIS TOOL when you:\n\u2022 Discover how something works in this project\n\u2022 Learn project-specific patterns or conventions\n\u2022 Find configuration details or requirements\n\u2022 Understand architecture or system design\n\u2022 Encounter non-obvious behaviors or gotchas\n\u2022 Figure out dependencies or integrations\n\u2022 Realize your assumptions were incorrect\n\n\ud83d\udca1 KEY TRIGGERS - phrases that signal discovery:\n"I learned that", "turns out", "actually it\'s", "I discovered", "for future reference", "good to know", "interesting that"\n\n\u26a1 ALWAYS CAPTURE project-specific knowledge immediately - this creates the persistent memory that survives context resets.\n\n\u2713 Examples: Database schema conventions, API authentication flows, build system quirks\n\u2717 Skip: Current bug fixes, temporary debug output, generic programming concepts\n\nKnowledge is automatically deduplicated and organized.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -207,11 +210,15 @@ const rl = readline.createInterface({ input: process.stdin, terminal: false });
 
 rl.on('line', (line) => {
   if (!line.trim()) return;
+  let req;
+  try { req = JSON.parse(line); }
+  catch (_) { process.stdout.write(jsonRpcError(null, -32700, 'Parse error') + '\n'); return; }
   try {
-    const response = handleRequest(JSON.parse(line));
+    const response = handleRequest(req);
     if (response) process.stdout.write(response + '\n');
   } catch (err) {
-    process.stdout.write(jsonRpcError(null, -32700, 'Parse error') + '\n');
+    log('Internal error: ' + err.message);
+    process.stdout.write(jsonRpcError(req.id || null, -32603, 'Internal error') + '\n');
   }
 });
 
