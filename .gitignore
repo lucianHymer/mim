@@ -28,3 +28,7 @@ Thumbs.db
 .claude/knowledge/.analysis-lock
 .claude/knowledge/.last-analysis
 .claude/knowledge/.entry-status.json
+
+# Mim - Transient/local state files
+.claude/knowledge/unresolved.md
+.claude/knowledge/mim.log

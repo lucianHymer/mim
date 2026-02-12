@@ -1,42 +1,22 @@
 ---
-description: Capture knowledge and insights to Mím's Wellspring
+name: remember
+description: Captures knowledge to persistent memory. Use when discovering project-specific patterns, architecture, conventions, or gotchas. Triggers on "I learned that", "turns out", "for future reference", "good to know".
 ---
 
 # Remember
 
-Use the `remember` MCP tool to capture important discoveries, patterns, and insights about this codebase. Knowledge is preserved in the Wellspring and loaded into future sessions.
+Use the `remember` MCP tool to capture discoveries about this codebase. Knowledge persists across sessions.
 
-## Categories
+## Be TERSE. Every token costs permanent context.
 
-Choose the most appropriate category:
+- ONE fact per entry. No filler. No preamble.
+- Max 2-3 sentences per `details` field.
+- Include file paths when relevant.
+- Categories: architecture, patterns, dependencies, workflows, gotchas (or any descriptive category).
+- Repeated calls with similar topics append to the same file (the slug is the grouping key).
 
-- **architecture** - System design decisions, data flow, component relationships
-- **patterns** - Recurring code patterns, conventions, best practices
-- **dependencies** - Package relationships, version constraints, compatibility notes
-- **workflows** - Development processes, build steps, deployment procedures
-- **gotchas** - Edge cases, pitfalls, non-obvious behaviors, lessons learned
+## Good vs Bad
 
-## Guidelines
+BAD: "I discovered that the authentication system uses JWT tokens stored in HTTP-only cookies with a 30-minute expiration time, which is configured in the auth middleware."
 
-- Be specific and actionable
-- Include file paths or function names when relevant
-- Focus on insights that would help future development
-- Avoid duplicating obvious information from code comments
-
-## Example Usage
-
-When you discover something important about the codebase, call the remember tool:
-
-```
-remember({
-  category: "gotchas",
-  content: "The auth middleware must be applied before rate limiting or tokens won't be validated"
-})
-```
-
-```
-remember({
-  category: "architecture",
-  content: "All API routes follow the pattern: /api/v{version}/{resource}/{action}"
-})
-```
+GOOD: "Auth uses JWT in HTTP-only cookies, 30min TTL. Configured in `src/middleware/auth.ts`."
