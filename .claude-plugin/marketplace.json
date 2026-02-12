@@ -13,8 +13,8 @@
       "name": "mim-ai",
       "source": "./mim-ai",
       "description": "Persistent memory for Claude Code - never forget what you learn",
-      "version": "2.0.0",
-      "keywords": ["memory", "knowledge", "persistence", "mcp"],
+      "version": "3.0.0",
+      "keywords": ["memory", "knowledge", "persistence", "mcp", "claude-code", "context"],
       "category": "productivity"
     }
   ]

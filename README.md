@@ -1,14 +1,8 @@
-# Mím - Persistent Memory for Claude Code
-
-![Mim Demo](assets/demo.gif)
+# Mim - Persistent Memory for Claude Code
 
 ## Description
 
-Mim is an AI-powered knowledge management system for Claude Code with three core components:
-
-- **Knowledge Capture**: The MCP `remember()` tool allows Claude Code to automatically capture insights and discoveries during sessions
-- **Knowledge Review**: An interactive TUI game for reviewing, organizing, and refining captured knowledge
-- **AI-Powered Processing**: Uses the Claude Agent SDK for intelligent knowledge categorization and conflict resolution
+Mim is an AI-powered knowledge management system for Claude Code. It automatically captures, organizes, and validates project-specific knowledge so nothing learned is ever lost.
 
 Knowledge is organized into categories:
 - **Architecture** - System design decisions and structural patterns
@@ -26,44 +20,36 @@ Knowledge is organized into categories:
 Once per machine:
 
 ```bash
-npm install -g mim-ai
 claude plugin marketplace add lucianHymer/mim
 ```
 
-and once per repo:
+Once per repo:
 
 ```bash
 claude plugin install mim-ai@mim-marketplace --scope project
 ```
 
-That's it. Mím will guide you through the rest.
+That's it. Mim will guide you through the rest.
 
 ## How It Works
 
 Once installed, everything happens in the background:
 
 1. **Automatic capture**: As you work, Claude uses `remember()` to capture discoveries about your codebase
-2. **Background processing**: New knowledge is deduplicated, categorized, and written to organized files
-3. **Background validation**: On session start, existing knowledge is checked against your current codebase
-4. **Review when needed**: When conflicts or decisions arise, you'll be prompted to run `mim review`
+2. **Background processing**: Direct file writes, no queue, instant
+3. **Validation**: `/mim:validate` checks knowledge against current codebase
+4. **Review**: `/mim:review` resolves ambiguous items interactively
 
 The knowledge is loaded into Claude's memory through your project's `CLAUDE.md` file. Use `/memory` or `/context` in Claude Code to verify it's working.
 
 ### Commands
 
-- `mim` or `mim status` - Check for pending reviews (plugin runs this automatically)
-- `mim review` - Launch the interactive review TUI (plugin prompts you to run this when needed)
-- `mim init` - Initialize the `.claude/knowledge/` directory (plugin runs this automatically on first `claude` run in a repo)
-
-### Note on Resume Sessions
-
-Background validation runs via the Claude Agent SDK, which creates entries in your resume session list. This is an unavoidable side effect of the current SDK architecture.
+- `/mim:validate` - Check all knowledge entries against current codebase
+- `/mim:review` - Resolve unresolved knowledge items interactively
+- `/mim:remember` - Learn about the remember workflow
 
 ## Credits
 
-- Music: [DOOM](https://opengameart.org/content/triple-kill-multiple-tracks)
-- Tileset: [16x16 Fantasy Tileset](https://opengameart.org/content/16x16-fantasy-tileset)
-- Sound Effects: [512 Sound Effects (8-bit style)](https://opengameart.org/content/512-sound-effects-8-bit-style)
 - Built on [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
 
 ## License
